@@ -1,9 +1,5 @@
 # 📊 Distributive Impact of Indirect Taxes in Côte d'Ivoire
 ### CEQ-Based Microsimulation · EHCVM 2021 · Working Paper — April 2026
-
-> **ANStat — Cellule d'Analyses Économiques (CAE)**  
-> Armand Djaha, M.Sc. · Applied Economist | Research
-
 ---
 
 ## 🗂️ Table of Contents
@@ -180,7 +176,6 @@ These limitations are explicitly acknowledged as part of a **transparent and pro
 └── README.md
 ```
 
----
 
 ## Reproducibility
 
@@ -190,9 +185,6 @@ The repository is structured to ensure full reproducibility:
 - Random seeds are fixed where applicable
 - Raw data paths are parameterized via a `globals.do` master file
 - Results are automatically exported to `/output/`
-
-
-
 ---
 
 ## References
@@ -203,22 +195,8 @@ The repository is structured to ensure full reproducibility:
 - UNECA (2019). *Economic Report on Africa: Fiscal Policy for Financing Sustainable Development*.
 
 ---
-
-## Author
-
-**Armand Djaha, M.Sc.**  
-Applied Economist · ANStat — Cellule d'Analyses Économiques (CAE)  
-Côte d'Ivoire / Canada
-
-[![Email](https://img.shields.io/badge/Email-armandjaha@gmail.com-blue?style=flat-square&logo=gmail)](mailto:armandjaha@gmail.com)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Armand_Djaha-0077B5?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/armand-djaha-m-sc-108119186)
-
----
-
 ## Status
 
 ![Status](https://img.shields.io/badge/Status-Working%20Paper-orange?style=flat-square)
 ![Date](https://img.shields.io/badge/Date-April%202026-lightgrey?style=flat-square)
 ![Institution](https://img.shields.io/badge/Institution-ANStat%20CAE-green?style=flat-square)
-
-> 📌 *Working paper — April 2026 · Final project (ANStat)*
