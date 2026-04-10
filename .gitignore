@@ -1,0 +1,13 @@
+# Données lourdes
+data/raw/*
+data/EHCVM/*
+
+# Fichiers Stata
+*.dta
+
+# Logs et temporaires
+*.log
+*.tmp
+
+# Windows
+Thumbs.db

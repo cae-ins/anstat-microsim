@@ -1,0 +1,316 @@
+// Ce qu'on fait : 
+
+/*
+modèle :  T = (at- aEtgamma_D + tgamma_F - Etgamma_F)(I-gamma_D)
+			= [a(t-Etgamma_D) + (tgamma_F - Etgamma_F)](I-gamma_D)
+			= (TVA domestique nette + TVA importée nette)(propagation IO)
+			
+Le premier bloc représente la TVA nette sur la production domestique. Le terme (t) correspond à la taxe statutaire appliquée au secteur, tandis que (tgamma_D) mesure la part de TVA déjà contenue dans les intrants domestiques utilisés dans la production.Cette composante est retranchée afin de respecter le principe fondamental de la TVA : la taxe porte sur la valeur ajoutée et non sur les intrants intermédiaires. Le vecteur (E) agit comme un indicateur d'exemption qui coupe la transmission fiscale pour les secteurs exemptés, tandis que (alpha) capture le degré de conformité ou de formalité dans les transactions domestiques.		
+
+Le second bloc, correspond à la composante fiscale liée aux intrants importés. Les intrants importés sont taxés à la frontière au taux statutaire (t), ce qui génère une taxe incorporée dans les coûts de production. L'indicateur (E) intervient également ici pour neutraliser cette composante lorsque le secteur est exempt.
+
+Enfin, le multiplicateur, appelé inverse de Leontief, capture la propagation du choc fiscal dans la chaîne productive domestique. Lorsqu'un secteur subit une augmentation de coût liée à la TVA, cette hausse se transmet aux secteurs qui utilisent ce bien comme intrant, puis à leurs propres utilisateurs, et ainsi de suite. L'inverse de Leontief agrège l'ensemble de ces effets directs et indirects pour produire le choc total de prix sectoriel associé à la réforme fiscale.
+
+
+Ainsi, l'expression complète calcule la hausse finale des prix sectoriels induite par la TVA, en tenant compte simultanément (i) de la taxation nette de la valeur ajoutée domestique, (ii) de la taxe incorporée dans les intrants importés, (iii) des exemptions et du degré de conformité fiscale, et (iv) de la propagation de ces effets à travers la structure productive de l'économie.
+		
+Paramètres
+gammaD / gammaF
+t et E
+Calcul tgammaD
+Calcul shock
+Calcul multiplicateur
+Calcul T
+Pondération DOM / IMP
+Application micro
+Agrégation
+*/
+
+
+clear all
+set more off
+set type double
+
+
+*========================
+* 0) Paramètres  (N=2)
+*========================
+local N = 2
+scalar NUMGOODS = `N'
+local alpha = 1
+
+* Taux statutaires par secteur (t) : secteur 1 taxé, secteur 2 taxé
+matrix t = (0.18, 0.09)
+
+* Exemptions : 1 = exempt, 0 = non-exempt
+* Ici: aucun exempt
+matrix oldE = (0, 0)
+
+matrix I1 = (1, 1)
+matrix E  = I1 - oldE    // 1 = taxable, 0 = exempt
+matrix list t
+matrix list E
+
+/*
+* NOTE:
+* On ne peut pas toujours déduire l'indicateur E (taxable/exempt) directement du taux t.
+* En effet, deux situations différentes peuvent avoir t = 0 :
+*
+* 1) Secteur "taux zéro" (zero-rated)
+*    - t = 0
+*    - mais le secteur reste dans le système TVA
+*    - les entreprises peuvent récupérer la TVA sur leurs intrants
+*    -> donc le secteur est toujours considéré comme taxable (E = 1)
+*
+* 2) secteur exempt
+*    - t = 0
+*    - mais la TVA sur les intrants n'est pas récupérable
+*    - le secteur est en dehors du mécanisme TVA
+*    -> donc E = 0
+*
+* Conclusion :
+* Deux secteurs peuvent avoir t = 0 mais un statut TVA différent.
+* C'est pourquoi le modèle conserve une variable spécifique E
+* pour identifier les secteurs exemptés.
+*/
+
+*========================
+* 1) Matrices IO mini
+*========================
+* gammaD : coefficients Leontief domestiques (2x2)
+matrix gammaD = (0.10, 0.05 \ ///
+                 0.02, 0.08)
+
+* gammaF : coefficients importés (2x2)
+matrix gammaF = (0.02, 0.01 \ ///
+                 0.01, 0.02)
+
+* Parts import/dom (1x2)
+matrix IMP = (0.30, 0.40)
+matrix DOM = (0.70, 0.60)
+
+*========================
+* 2) Affiche dimensions
+*========================
+display "gammaD:" rowsof(gammaD) "x" colsof(gammaD)
+display "t:     " rowsof(t) "x" colsof(t)
+display "E:     " rowsof(E) "x" colsof(E)
+display "IMP:   " rowsof(IMP) "x" colsof(IMP)
+display "DOM:   " rowsof(DOM) "x" colsof(DOM)
+
+matrix list t
+matrix list E
+matrix list gammaD
+matrix list gammaF
+matrix list IMP
+matrix list DOM
+
+*========================
+* 3) Calcul des objets intermédiaires en Mata
+*========================
+mata:
+E      = st_matrix("E") // importe la matrice E dans mata  
+t      = st_matrix("t")
+gammaD = st_matrix("gammaD") 
+gammaF = st_matrix("gammaF")
+
+tgammaD  = t*gammaD // calcule dans mata le produit t par gammaD
+tgammaF  = t*gammaF
+
+EtgammaD = E :* tgammaD // :* parce que E est binaire donc si E=0  met 0
+EtgammaF = E :* tgammaF 
+
+st_matrix("tgammaD", tgammaD) // il ramène la matrice sur stata
+st_matrix("tgammaF", tgammaF)
+st_matrix("EtgammaD", EtgammaD)
+st_matrix("EtgammaF", EtgammaF)
+end
+
+matrix list tgammaD
+matrix list tgammaF
+matrix list EtgammaD
+matrix list EtgammaF
+
+*========================
+* 4) Calcul de T
+*========================
+matrix T   = (`alpha'*t - `alpha'*EtgammaD + t*gammaF - EtgammaF) * inv(I(`N') - gammaD) 
+matrix NEW = `alpha'*t // représente le taux effectif de TVA sur la production domestique après prise en compte de l'informalité ou de la non-conformité fiscale.
+
+matrix list T
+matrix list NEW
+
+*========================
+* 5) Pondération domestique / importée
+*========================
+
+mata:
+t   = st_matrix("t")
+T   = st_matrix("T")
+IMP = st_matrix("IMP")
+DOM = st_matrix("DOM")
+NEW = st_matrix("NEW")
+
+A  = T :* DOM + t :* IMP     // choc final pondéré. Chaque secteur est composé d'une part domestique et d'une part importée. A= choc total. T*DOM = choc de prix pour la partie produite localement. 
+
+/*
+* Le choc final de prix combine :
+* (i) la hausse de prix domestique issue du modèle IO (T)
+* pondérée par la part domestique du bien,
+* et (ii) la TVA statutaire sur la part importée.
+*/
+
+AA = A'
+st_matrix("BASEIO_VAT", AA)
+
+DIR   = t:*IMP + NEW:*DOM    // effet direct
+
+/*
+* DIR représente l'effet direct de la TVA sur les prix.
+* Il combine la TVA statutaire appliquée aux importations
+* et la TVA effectivement transmise sur la production domestique (alpha*t),
+* sans prendre en compte les effets indirects via la chaîne de production.*/
+
+INDIR = A - DIR              // effet indirect
+
+st_matrix("DIR", DIR')
+st_matrix("INDIR", INDIR')
+end
+
+matrix VAT_TOTAL = BASEIO_VAT
+matrix VAT_DIR   = DIR
+matrix VAT_INDIR = INDIR
+
+matrix list VAT_TOTAL
+matrix list VAT_DIR
+matrix list VAT_INDIR
+
+
+*========================
+* 6) Extraire les scalars
+*========================
+
+foreach num of numlist 1/`N'{
+    scalar VAT_TOTAL`num' = VAT_TOTAL[`num',1]
+    scalar VAT_INDIR`num' = VAT_INDIR[`num',1]
+    scalar VAT_DIR`num'   = VAT_DIR[`num',1]
+}
+
+display VAT_TOTAL1
+display VAT_TOTAL2
+display VAT_DIR1
+display VAT_DIR2
+display VAT_INDIR1
+display VAT_INDIR2
+
+
+*========================
+* 7) Mini dataset consommation
+*========================
+
+clear
+input hhid io cons_val
+1 1 100
+1 2 200
+2 1 150
+2 2 100
+end
+
+list
+
+
+*========================
+* 8) Appliquer les taux sectoriels
+*========================
+
+gen effrate = .
+foreach n of numlist 1/`N'{
+    replace effrate = VAT_TOTAL`n' if io==`n'
+}
+
+gen effrate_dir = .
+foreach n of numlist 1/`N'{
+    replace effrate_dir = VAT_DIR`n' if io==`n'
+}
+
+gen effrate_indir = .
+foreach n of numlist 1/`N'{
+    replace effrate_indir = VAT_INDIR`n' if io==`n'
+}
+
+/*
+* On applique les taux effectifs de TVA calculés au niveau sectoriel
+* à chaque observation de consommation. Chaque dépense héritera
+* du taux correspondant au secteur IO auquel le bien appartient.
+*/
+
+list
+
+
+*========================
+* 9) Calcul TVA par ligne
+*========================
+
+gen vat_total = effrate * cons_val / (1 + effrate)
+gen vat_dir   = effrate_dir * cons_val / (1 + effrate_dir)
+gen vat_indir = effrate_indir * cons_val / (1 + effrate_indir)
+
+list
+
+/*
+* Les dépenses observées sont en prix TTC.
+* Pour isoler la TVA payée, on utilise la relation :
+* P_TTC = P_HT (1 + t)
+*
+* Donc la TVA payée est :
+* TVA = t * P_HT = t * P_TTC / (1 + t)
+*
+* Cette formule permet d'extraire la part de TVA contenue
+* dans la dépense totale observée.
+*/
+
+
+*========================
+* 10) Agrégation ménage
+*========================
+
+collapse (sum) cons_val vat_total vat_dir vat_indir, by(hhid)
+list
+
+
+/*
+Ce script reconstruit de manière simplifiée le mécanisme utilisé dans les modèles de microsimulation fiscale (type CEQ/Banque mondiale) pour estimer l'incidence de la TVA sur les ménages. La première étape consiste à partir des taux statutaires de TVA par secteur (t) et de la structure productive décrite par la matrice input-output. Le modèle distingue la production domestique et les importations, ainsi que les secteurs éventuellement exemptés via l'indicateur E. L'objectif est de calculer le choc de prix sectoriel généré par la TVA en tenant compte de la chaîne de production. La TVA sur les intrants récupérables est retirée afin d'éviter la double taxation, tandis que la taxe contenue dans les intrants importés ou non récupérables est conservée. Ce mécanisme est capturé par l'équation du modèle qui combine la taxe statutaire, les coefficients techniques domestiques et importés, et l'inverse de Leontief (I − γD)^(-1) afin de propager les effets de taxe dans l'ensemble du système productif. Le résultat est un vecteur de taux effectifs de TVA par secteur, qui incorpore à la fois les effets directs et les effets indirects de la taxation.
+
+La seconde étape consiste à relier ces taux sectoriels à la consommation des ménages. Les taux effectifs calculés au niveau sectoriel sont appliqués aux dépenses observées dans les données de consommation selon le secteur du bien consommé. Comme les dépenses observées sont exprimées en prix TTC, la TVA effectivement payée est extraite à l'aide de la relation TVA = t × P_TTC / (1 + t), ce qui permet d'isoler la part de taxe contenue dans la dépense totale. Cette procédure permet de calculer, pour chaque transaction de consommation, la TVA totale ainsi que sa décomposition entre composante directe et composante indirecte. L'agrégation de ces montants au niveau des ménages permet ensuite d'analyser la distribution de la charge fiscale. 
+
+L'intuition économique centrale est que la charge de TVA dépend non seulement du niveau total de consommation mais également de la composition du panier de biens consommés, puisque les secteurs peuvent être soumis à des taux différents et incorporer des effets indirects issus de la structure productive. Les étapes suivantes consisteront à appliquer cette logique à des données réelles de consommation afin d'estimer l'incidence distributive de la TVA entre ménages ou groupes de revenu.
+*/
+
+
+/*
+Limite : 
+1
+
+Le modèle suppose implicitement que la TVA est entièrement transmise aux prix de consommation (full pass-through). Autrement dit :
+
+Δ𝑃= taxe
+ΔP=taxe
+
+Cette hypothèse signifie que les entreprises ne modifient ni leurs marges ni leur comportement de production en réponse à la taxe.
+
+Limite
+
+Dans la réalité, la transmission de la taxe dépend de plusieurs facteurs :
+structure de marché (concurrence vs monopole),
+élasticité de la demande,
+capacité d'absorption de la taxe par les producteurs.
+Plusieurs études empiriques montrent que la transmission peut être incomplète ou supérieure à 100 % selon les secteurs.
+
+Amélioration possible
+
+Introduire un paramètre de pass-through sectoriel :
+​Δ𝑃i= theta*taxe
+
+ou theta est estimé ou calibré.
+
+*/
