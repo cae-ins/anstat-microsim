@@ -9,5 +9,14 @@ data/EHCVM/*
 *.log
 *.tmp
 
+# Outputs générés (tableaux, figures)
+output/tables/
+output/figures/
+
+# Formats tabulaires et graphiques générés
+*.xlsx
+*.csv
+*.gph
+
 # Windows
 Thumbs.db
