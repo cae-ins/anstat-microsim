@@ -140,38 +140,44 @@ These limitations are explicitly acknowledged as part of a **transparent and pro
 ## Repository Structure
 
 ```
-📁 vat-incidence-civ/
+📁 anstat-microsim/
 │
-├── 📁 data/
-│   ├── raw/              # EHCVM 2021 raw files (versioned)
-│   └── processed/        # Cleaned and merged datasets
+├── 📁 00_documentation/
+│   ├── EHCVM_products/       # Product classification reference files
+│   ├── methodologie/         # CEQ methodology notes and references
+│   ├── presentation/         # Slide decks
+│   ├── ressources_CEQ/       # CEQ reference Stata scripts (CIV 2021 WB)
+│   └── statutory_rates/      # Tax code and fiscal appendices
 │
-├── 📁 code/
-│   ├── 00_master.do   # master script
-│   ├── 00_setup.do    # prepare environnment
-│   ├── 01_prepare_data.do # Data preparation & variable construction
-│   ├── 02_mapping_tax.do  # Build a clean and auditable VAT mapping  
-│   ├── 03_compute_taxes.do # Compute household-level VAT incidence
-│   ├── 04_analysis.do  # Produce the main CEQ-style distributive results
-│   ├── 05_progressivity.do # Measure VAT progressivity
-│   ├── 06_01_sensitivity_taxation.do     # Product-level fiscal treatment
-│   ├── 06_02_ranking.do      # Sensitivity analysis of VAT incidence to alternative assumptions
-│   ├── 07_appendix_tables.do # Produce supplementary tables
-│   ├── 08_figures.do   # Produce figures 
-│   └── 09_vat_determinants.do      # Analyze the socio-demographic determinants of household exposure to VAT
+├── 📁 01_data_sources/
+│   ├── Datain/               # EHCVM 2021 raw survey files (not versioned)
+│   ├── Dataout/              # EHCVM processed datasets (not versioned)
+│   ├── Documents/            # Reference documents (questionnaires, methodology)
+│   └── Programs/             # Survey processing scripts (EHCVM team)
 │
-├── 📁 output/
-│   ├── tables/  # Excel tables
-    ├── final_data/ # final datasets
-    ├── logs/  
-│   └── figures/          # Concentration curves, ETR profiles
+├── 📁 02_data_intermediate/  # Silver layer — cleaned intermediate datasets (not versioned)
 │
-├── 📁 docs/
-│   ├── EHCVM_products
-    ├── presentation
-    ├── scenario_calibration
-    ├── statutory_rates
-│   └── wording
+├── 📁 03_data_output/        # Gold layer — final analytic datasets (not versioned)
+│
+├── 📁 04_scripts/
+│   ├── 00_master.do          # Master script — runs full pipeline
+│   ├── 00_setup.do           # Environment setup and global paths
+│   ├── 01_prepare_data.do    # Data preparation & variable construction
+│   ├── 02_mapping_tax.do     # Build auditable VAT product mapping
+│   ├── 03_compute_taxes.do   # Compute household-level VAT incidence
+│   ├── 04_analysis.do        # CEQ-style distributive results
+│   ├── 05_progressivity.do   # VAT progressivity measures (Kakwani, Gini)
+│   ├── 06_01_sensitivity_taxation.do  # Sensitivity: fiscal treatment scenarios
+│   ├── 06_02_sensitivity_ranking.do   # Sensitivity: ranking robustness
+│   ├── 07_appendix_tables.do # Supplementary tables
+│   ├── 08_figures.do         # Concentration curves, ETR profiles
+│   └── 09_vat_determinants.do # Socio-demographic determinants of VAT exposure
+│
+├── 📁 06_logs/               # Run logs (not versioned)
+│
+├── 📁 07_reports/
+│   ├── tables/               # Excel output tables (not versioned)
+│   └── figures/              # Figures and charts (not versioned)
 │
 └── README.md
 ```
@@ -183,8 +189,8 @@ The repository is structured to ensure full reproducibility:
 
 - All code is written in **Stata** (`.do` files) with inline comments
 - Random seeds are fixed where applicable
-- Raw data paths are parameterized via a `globals.do` master file
-- Results are automatically exported to `/output/`
+- Raw data paths are parameterized via `00_setup.do`
+- Results are automatically exported to `07_reports/`
 ---
 
 ## References

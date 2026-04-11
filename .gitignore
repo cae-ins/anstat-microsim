@@ -1,20 +1,29 @@
-# Données lourdes
-data/raw/*
-data/EHCVM/*
+# Données brutes (Bronze)
+01_data_sources/Datain/
+01_data_sources/Dataout/
+
+# Couche Silver — données intermédiaires Stata
+02_data_intermediate/
+
+# Couche Gold — datasets finaux Stata
+03_data_output/
 
 # Fichiers Stata
 *.dta
 
 # Logs et temporaires
+06_logs/
 *.log
 *.tmp
 
 # Outputs générés (tableaux, figures)
-output/tables/
-output/figures/
+07_reports/tables/
+07_reports/figures/
 
 # Formats tabulaires et graphiques générés
 *.xlsx
+*.xls
+*.xlsm
 *.csv
 *.gph
 

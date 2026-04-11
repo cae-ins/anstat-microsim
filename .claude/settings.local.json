@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(sed:*)",
+      "Bash(grep -r '\\\\$OUTPUT/final_data/' 04_scripts/)",
+      "Bash(rmdir code:*)",
+      "Bash(rmdir doc/EHCVM_products doc/scenario_calibration doc/statutory_rates doc/wording doc/presentation doc)",
+      "Bash(rmdir ressources/CEQ_CIV2021 ressources)",
+      "Bash(rmdir output/tables output/figures output)",
+      "Bash(rmdir doc:*)",
+      "Bash(mv output/figures/* 07_reports/figures/)",
+      "Bash(find output/tables -type f -exec bash -c 'dir=$\\(dirname \"{}\"\\); newdir=\"${dir/output\\\\/tables/07_reports\\\\/tables}\"; mkdir -p \"$newdir\"; mv \"{}\" \"$newdir/\"' ';')",
+      "Bash(rm -rf output)",
+      "Bash(mv data/Datain  01_data_sources/Datain)",
+      "Bash(mv data/Dataout 01_data_sources/Dataout)",
+      "Bash(mv data/Documents 01_data_sources/Documents)",
+      "Bash(mv data/Programs  01_data_sources/Programs)",
+      "Bash(git rm:*)",
+      "Bash(grep -n 'use\\\\s\\\\+\"$DATA\\\\|use\\\\s\\\\+\"$SILVER\\\\|use\\\\s\\\\+\"$GOLD\\\\|save\\\\s\\\\+\"$' '04_scripts/*.do')"
+    ]
+  }
+}
