@@ -269,14 +269,99 @@ di as text "──────────────────────�
 restore
 
 ********************************************************************************
-* STEP 8 — Distributional assessment : is the reform regressive ?
-********************************************************************************
-* A reform is regressive if the additional burden (as % of consumption)
-* is larger for poorer deciles — i.e., delta_eff_s2 decreasing with decile.
+* STEP 8 — Kakwani index of reform progressivity (3 scenarios)
 *
-* Quick check: compare D1 vs D10 effective rate change.
+* PURPOSE:
+* Single synthetic measure of distributional impact.
+* Kakwani = CI(reform burden) − Gini(pre-tax consumption)
+*   Kakwani < 0 → reform is REGRESSIVE (poor bear larger relative burden)
+*   Kakwani > 0 → reform is PROGRESSIVE
+*
+* METHOD:
+* Concentration index via the generalized formula (O'Donnell et al. 2008):
+*   CI = 2/μ × cov_w(t_i, F_i)
+*     where F_i = weighted fractional rank in the consumption distribution
+*     and   μ   = weighted mean of the variable of interest
+*
+* Computed at household level (before decile collapse) using survey weights.
+********************************************************************************
+
+* Sort by pre-reform consumption to define welfare ranking
+sort conso_w_hh
+
+* Weighted fractional rank — midpoint rule: F_i = (CW_{i-1} + w_i/2) / W
+gen cumw_rank  = sum(hhweight)
+local totw_kak = cumw_rank[_N]
+gen frac_rank  = (cumw_rank - hhweight / 2) / `totw_kak'
+
+* ── Gini of pre-tax consumption ─────────────────────────────────────────────
+sum conso_w_hh [aw=hhweight]
+local mu_c = r(mean)
+
+gen w_xF_c = hhweight * (conso_w_hh / `mu_c') * frac_rank
+sum w_xF_c
+local Gini_c = 2 * r(sum) / `totw_kak' - 1
+drop w_xF_c
+
+* ── Concentration index and Kakwani for each scenario ───────────────────────
+foreach sc in s1 s2 s3 {
+    sum add_vat_`sc' [aw=hhweight]
+    local mu_t = r(mean)
+    gen w_tF_`sc' = hhweight * (add_vat_`sc' / `mu_t') * frac_rank
+    sum w_tF_`sc'
+    local CI_`sc'      = 2 * r(sum) / `totw_kak' - 1
+    local Kakwani_`sc' = `CI_`sc'' - `Gini_c'
+    drop w_tF_`sc'
+}
+
+drop cumw_rank frac_rank
+
+* ── Display ─────────────────────────────────────────────────────────────────
+di as text ""
+di as text "─────────────────────────────────────────────────────────────────────"
+di as text " Kakwani index — progressivity of poultry input reform"
+di as text "─────────────────────────────────────────────────────────────────────"
+di as text " Gini (pre-reform consumption) : " as result %6.4f `Gini_c'
+di as text ""
+di as text "             CI(reform)   Kakwani   Direction"
+foreach sc in s1 s2 s3 {
+    local dir = cond(`Kakwani_`sc'' < 0, "REGRESSIVE", ///
+                cond(`Kakwani_`sc'' > 0, "PROGRESSIVE", "PROPORTIONAL"))
+    di as text " `sc'   " as result %9.4f `CI_`sc'' as text "  " ///
+                          as result %9.4f `Kakwani_`sc'' as text "  `dir'"
+}
+di as text "─────────────────────────────────────────────────────────────────────"
+di as text " Note: Kakwani < 0 → poor bear a proportionally larger share of the burden."
+
+* ── Export Kakwani results ───────────────────────────────────────────────────
+preserve
+clear
+set obs 3
+gen str3 scenario     = ""
+gen      gini_cons    = `Gini_c'
+gen      ci_reform    = .
+gen      kakwani      = .
+replace scenario   = "S1" in 1
+replace scenario   = "S2" in 2
+replace scenario   = "S3" in 3
+replace ci_reform  = `CI_s1'      in 1
+replace ci_reform  = `CI_s2'      in 2
+replace ci_reform  = `CI_s3'      in 3
+replace kakwani    = `Kakwani_s1' in 1
+replace kakwani    = `Kakwani_s2' in 2
+replace kakwani    = `Kakwani_s3' in 3
+gen str15 direction = cond(kakwani < 0, "Regressive", ///
+                      cond(kakwani > 0, "Progressive", "Proportional"))
+export excel using "$TABLES/10/10_reform_kakwani.xlsx", firstrow(variables) replace
+restore
+
+********************************************************************************
+* STEP 9 — Distributional assessment: is the reform regressive?
+********************************************************************************
+* Quick decile-level check: compare D1 vs D10 effective rate change.
 
 use "$SILVER/06/reform_chicken_inputs.dta", clear
+sort decile
 
 di as text ""
 di as text "─────────────────────────────────────────────────────────────────────"
@@ -285,7 +370,6 @@ di as text "──────────────────────�
 di as text " Δ effective rate D1  (poorest) : " %6.4f delta_eff_s2[1]
 di as text " Δ effective rate D10 (richest) : " %6.4f delta_eff_s2[10]
 
-* If D1 > D10 → regressive reform
 if delta_eff_s2[1] > delta_eff_s2[10] {
     di as error " → REGRESSIVE: poor households bear a proportionally larger burden"
 }
@@ -295,8 +379,80 @@ else if delta_eff_s2[1] < delta_eff_s2[10] {
 else {
     di as text " → PROPORTIONAL: burden is equal across deciles"
 }
-
 di as text "─────────────────────────────────────────────────────────────────────"
+
+********************************************************************************
+* STEP 10 — Sensitivity cross-table: α × s_inputs grid
+*
+* PURPOSE:
+* Maps the full parameter space (4 pass-through rates × 3 input cost shares).
+* Shows that the direction of regressivity is robust to these assumptions:
+* it is determined solely by budget shares (dpoul/conso), not by scale factors.
+* The table reports magnitude variation useful for a working paper robustness section.
+*
+* NOTE: budget share ratios (D1 vs D10) are constant across all (α, s) combinations,
+* so the sign of Kakwani will not change — only its magnitude.
+********************************************************************************
+
+* Budget share of poultry by decile (ratio dpoul / conso_w_hh)
+* decile 1 = row 1, decile 10 = row 10 after sort
+local bs_d1  = dpoul[1]  / conso_w_hh[1]
+local bs_d10 = dpoul[10] / conso_w_hh[10]
+
+di as text ""
+di as text " Poultry budget share — D1 (poorest) : " as result %5.3f `bs_d1'  * 100 as text "%"
+di as text " Poultry budget share — D10 (richest): " as result %5.3f `bs_d10' * 100 as text "%"
+
+* Build 12-row results matrix (4 alphas × 3 shares)
+matrix SENS = J(12, 5, .)
+local row = 0
+
+foreach a_int in 30 50 70 100 {
+    foreach s_int in 65 75 89 {
+        local ++row
+        local a = `a_int' / 100
+        local s = `s_int' / 100
+        local r = `a' * `s' * 0.18
+
+        matrix SENS[`row', 1] = `a'
+        matrix SENS[`row', 2] = `s'
+        matrix SENS[`row', 3] = `r' * 100
+        matrix SENS[`row', 4] = `bs_d1'  * `r' * 100   // Δeff D1  (pp)
+        matrix SENS[`row', 5] = `bs_d10' * `r' * 100   // Δeff D10 (pp)
+    }
+}
+
+* Display
+di as text ""
+di as text "───────────────────────────────────────────────────────────────────────────"
+di as text " Sensitivity cross-table — delta effective VAT rate (pp) by scenario"
+di as text "───────────────────────────────────────────────────────────────────────────"
+di as text "  α(pass-thru)  s(input share)  Price impact  Δeff_D1   Δeff_D10  Regress.?"
+di as text "───────────────────────────────────────────────────────────────────────────"
+
+forvalues row = 1/12 {
+    local a_v   = SENS[`row', 1]
+    local s_v   = SENS[`row', 2]
+    local r_v   = SENS[`row', 3]
+    local d1_v  = SENS[`row', 4]
+    local d10_v = SENS[`row', 5]
+    local reg   = cond(`d1_v' > `d10_v', "Yes", "No")
+    di as text "  " %4.2f `a_v' "        " %4.2f `s_v' "        " ///
+               %5.2f `r_v' "%      " %6.4f `d1_v' "    " %6.4f `d10_v' "    `reg'"
+}
+di as text "───────────────────────────────────────────────────────────────────────────"
+
+* Export
+preserve
+clear
+svmat SENS, names(col)
+rename (c1 c2 c3 c4 c5) (alpha s_inputs price_impact_pct delta_eff_d1_pp delta_eff_d10_pp)
+gen str3 regressive = cond(delta_eff_d1_pp > delta_eff_d10_pp, "Yes", "No")
+export excel using "$TABLES/10/10_reform_sensitivity.xlsx", firstrow(variables) replace
+restore
+
+di as text ""
+di as text " Sensitivity table exported → $TABLES/10/10_reform_sensitivity.xlsx"
 
 ********************************************************************************
 * END
