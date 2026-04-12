@@ -29,3 +29,6 @@
 
 # Windows
 Thumbs.db
+
+# Environment variables — never commit credentials
+.env

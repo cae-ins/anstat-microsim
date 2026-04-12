@@ -50,6 +50,7 @@ cap mkdir "$SILVER/03"
 cap mkdir "$SILVER/04"
 cap mkdir "$SILVER/05"
 cap mkdir "$SILVER/06"
+cap mkdir "$SILVER/10"
 
 cap mkdir "$GOLD"
 
@@ -63,6 +64,8 @@ cap mkdir "$TABLES/05"
 cap mkdir "$TABLES/06"
 cap mkdir "$TABLES/07"
 cap mkdir "$TABLES/09"
+cap mkdir "$TABLES/10"
+cap mkdir "$TABLES/12"
 cap mkdir "$FIGS"
 
 * Log
