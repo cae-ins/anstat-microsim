@@ -14,7 +14,7 @@
 #
 # INPUT:  SILVER/06/fiscal_sensitivity_taxation.parquet
 #         SILVER/01/conso_clean.parquet  (for n_items)
-#         DATA/ehcvm_welfare_civ2021.dta (for socio-demographics)
+#         DATA/ehcvm_welfare_2b_CIV2021.dta (for socio-demographics)
 # OUTPUT: TABLES/09/09_reg_panel_*.xlsx
 #         FIGS/fig6_margins_income_milieu.png
 #
@@ -38,7 +38,7 @@ run_determinants <- function(paths) {
     dplyr::summarise(n_items = dplyr::n(), .groups = "drop")
 
   welfare_data <- haven::read_dta(
-    file.path(paths$DATA, "ehcvm_welfare_civ2021.dta"),
+    file.path(paths$DATA, "ehcvm_welfare_2b_CIV2021.dta"),
     col_select = c("hhid", "hhsize", "hgender", "hage",
                    "heduc", "halfa2", "grappe", "region")
   )

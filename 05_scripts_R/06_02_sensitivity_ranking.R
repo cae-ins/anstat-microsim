@@ -12,7 +12,7 @@
 #   - CEQ summary indices (Gini, CI, Kakwani, RS) per ranking × scenario
 #
 # INPUT:  SILVER/06/fiscal_sensitivity_taxation.parquet
-#         DATA/ehcvm_welfare_civ2021.dta
+#         DATA/ehcvm_welfare_2b_CIV2021.dta
 # OUTPUT: TABLES/06/06_02_*.xlsx
 #         SILVER/06/06_02_ceq_rankings.parquet
 #
@@ -29,7 +29,7 @@ run_sensitivity_ranking <- function(paths) {
 
   # ── Merge welfare variables ───────────────────────────────────────────────
   welfare_data <- haven::read_dta(
-    file.path(paths$DATA, "ehcvm_welfare_civ2021.dta"),
+    file.path(paths$DATA, "ehcvm_welfare_2b_CIV2021.dta"),
     col_select = c("hhid", "eqadu1", "eqadu2", "hgender", "hage",
                    "hmstat", "heduc", "halfa2", "halfa", "hbranch",
                    "pcexp", "zref", "hhsize")
