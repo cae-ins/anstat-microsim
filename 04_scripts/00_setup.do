@@ -63,6 +63,7 @@ cap mkdir "$TABLES/05"
 cap mkdir "$TABLES/06"
 cap mkdir "$TABLES/07"
 cap mkdir "$TABLES/09"
+cap mkdir "$TABLES/10"
 cap mkdir "$FIGS"
 
 * Log

@@ -104,7 +104,7 @@ di as text "──────────────────────�
 * STEP 1 — Load product-level data (post-mapping)
 ********************************************************************************
 
-use "$SILVER/03/fiscal_data.dta", clear
+use "$SILVER/01/conso_clean.dta", clear
 
 ********************************************************************************
 * STEP 2 — Identify chicken products and compute budget shares
@@ -118,8 +118,15 @@ label variable poultry "Poultry product (reform-affected)"
 gen depan_poultry = depan_w * poultry
 label variable depan_poultry "Expenditure on poultry (winsorized)"
 
-* Compute decile ranking (use existing conso_w variable)
-xtile decile = conso_w [pw=hhweight], n(10)
+* Baseline VAT at item level (needed for household-level aggregation later)
+gen vat_item_w = depan_w * r_vat_official
+
+* Household-level aggregates from product-level data
+bys hhid: egen conso_w_hh = total(depan_w)
+label variable conso_w_hh "Total household consumption (winsorized)"
+
+* Decile ranking on household consumption
+xtile decile = conso_w_hh [pw=hhweight], n(10)
 
 label define dec_lbl 1 "D1 poorest" 2 "D2" 3 "D3" 4 "D4" 5 "D5" ///
                      6 "D6" 7 "D7" 8 "D8" 9 "D9" 10 "D10 richest", replace
@@ -172,8 +179,9 @@ label variable vat_reform_s3 "Additional VAT burden — S3 full pass-through"
 ********************************************************************************
 
 sort hhid
-by hhid: egen dpoul = total(depan_poultry)
-by hhid: gen  hh_tag = (_n == 1)
+by hhid: egen vat_baseline = total(vat_item_w)
+by hhid: egen dpoul        = total(depan_poultry)
+by hhid: gen  hh_tag       = (_n == 1)
 
 by hhid: egen add_vat_s1 = total(vat_reform_s1)
 by hhid: egen add_vat_s2 = total(vat_reform_s2)
@@ -181,19 +189,16 @@ by hhid: egen add_vat_s3 = total(vat_reform_s3)
 
 keep if hh_tag == 1
 
-* Use existing household-level baseline VAT (from 03_compute_taxes.do)
-clonevar vat_baseline = vat_w
-
 * Total VAT after reform
 gen vat_post_s1 = vat_baseline + add_vat_s1
 gen vat_post_s2 = vat_baseline + add_vat_s2
 gen vat_post_s3 = vat_baseline + add_vat_s3
 
-* Effective VAT rates (use total household consumption)
-gen eff_vat_base = vat_baseline  / conso_w
-gen eff_vat_s1   = vat_post_s1   / conso_w
-gen eff_vat_s2   = vat_post_s2   / conso_w
-gen eff_vat_s3   = vat_post_s3   / conso_w
+* Effective VAT rates
+gen eff_vat_base = vat_baseline  / conso_w_hh
+gen eff_vat_s1   = vat_post_s1   / conso_w_hh
+gen eff_vat_s2   = vat_post_s2   / conso_w_hh
+gen eff_vat_s3   = vat_post_s3   / conso_w_hh
 
 * Change in effective VAT rate
 gen delta_eff_s1 = eff_vat_s1 - eff_vat_base
@@ -214,7 +219,7 @@ label variable delta_eff_s3 "Change in effective VAT rate — S3"
 
 preserve
 collapse ///
-    (mean) conso_w dpoul                               ///
+    (mean) conso_w_hh dpoul                            ///
     (mean) eff_vat_base eff_vat_s1 eff_vat_s2 eff_vat_s3 ///
     (mean) delta_eff_s1 delta_eff_s2 delta_eff_s3         ///
     (sum)  add_vat_tot_s1 = add_vat_s1                    ///
