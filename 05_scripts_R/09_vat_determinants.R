@@ -37,8 +37,8 @@ run_determinants <- function(paths) {
     dplyr::group_by(hhid) %>%
     dplyr::summarise(n_items = dplyr::n(), .groups = "drop")
 
-  welfare_data <- haven::read_dta(
-    file.path(paths$DATA, "ehcvm_welfare_2b_CIV2021.dta"),
+  welfare_data <- load_raw_dta(
+    "ehcvm_welfare_2b_CIV2021.dta",
     col_select = c("hhid", "hhsize", "hgender", "hage",
                    "heduc", "halfa2", "grappe", "region")
   )

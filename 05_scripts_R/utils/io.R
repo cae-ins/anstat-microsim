@@ -1,7 +1,47 @@
 # utils/io.R
 #
-# I/O helpers: parquet, Excel, figures
+# I/O helpers: parquet, Excel, figures, raw data (local or MinIO).
 # Thin wrappers that log output paths and create directories as needed.
+#
+# Data source is controlled by USE_MINIO (set in config.R):
+#   USE_MINIO = FALSE  → read from local DATA/ path (default)
+#   USE_MINIO = TRUE   → read from MinIO via arrow S3 filesystem
+
+
+# ── Raw .dta loader (local or MinIO) ─────────────────────────────────────────
+# Usage: load_raw_dta("ehcvm_welfare_2b_CIV2021.dta")
+#        load_raw_dta("ehcvm_welfare_2b_CIV2021.dta", col_select = c("hhid","hhsize"))
+load_raw_dta <- function(filename, col_select = NULL, ...) {
+  if (exists("USE_MINIO") && isTRUE(USE_MINIO)) {
+    # ── MinIO path ────────────────────────────────────────────────────────────
+    # Downloads to a temp file, then reads with haven.
+    # Requires: aws.s3 package + MINIO_* env vars set in config.R
+    if (!requireNamespace("aws.s3", quietly = TRUE)) {
+      stop("Package 'aws.s3' required for MinIO access. ",
+           "Install with: install.packages('aws.s3')")
+    }
+    s3_key  <- filename
+    tmp     <- tempfile(fileext = ".dta")
+    aws.s3::save_object(
+      object = s3_key,
+      bucket = MINIO_BUCKET_RAW,
+      file   = tmp,
+      region = "",
+      base_url = sub("^https?://", "", MINIO_ENDPOINT),
+      key    = MINIO_ACCESS_KEY,
+      secret = MINIO_SECRET_KEY
+    )
+    message("  ← MinIO: ", MINIO_BUCKET_RAW, "/", s3_key)
+    haven::read_dta(tmp, col_select = col_select, ...)
+  } else {
+    # ── Local path ────────────────────────────────────────────────────────────
+    local_path <- file.path(DATA, filename)
+    if (!file.exists(local_path)) {
+      stop("File not found: ", local_path)
+    }
+    haven::read_dta(local_path, col_select = col_select, ...)
+  }
+}
 
 
 # ── Parquet ───────────────────────────────────────────────────────────────────

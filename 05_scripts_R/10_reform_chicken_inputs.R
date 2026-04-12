@@ -139,6 +139,14 @@ run_reform_chicken <- function(paths) {
   save_parquet(reform_decile,
                file.path(paths$SILVER, "06", "reform_chicken_inputs.parquet"))
 
+  # Household-level data — used by step 13 (poverty incidence)
+  save_parquet(
+    hh %>% dplyr::select(hhid, hhweight, milieu, region, conso_w, decile,
+                          vat_baseline, add_vat_s1, add_vat_s2, add_vat_s3,
+                          vat_post_s1, vat_post_s2, vat_post_s3),
+    file.path(paths$SILVER, "10", "reform_chicken_hh.parquet")
+  )
+
   # ── Fiscal revenue estimate ───────────────────────────────────────────────
   rev <- hh %>%
     dplyr::summarise(

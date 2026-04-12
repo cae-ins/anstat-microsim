@@ -22,6 +22,9 @@ ROOT <- getwd()
 DATA   <- file.path(ROOT, "01_data_sources", "Dataout")
 CODE   <- file.path(ROOT, "05_scripts_R")
 
+# ── Load config (data source flag + MinIO credentials) ────────────────────────
+source(file.path(CODE, "config.R"))
+
 # ── Medallion layers ───────────────────────────────────────────────────────────
 SILVER <- file.path(ROOT, "02_data_intermediate")
 GOLD   <- file.path(ROOT, "03_data_output")
@@ -37,12 +40,13 @@ for (d in c(
   file.path(SILVER, "01"), file.path(SILVER, "02"),
   file.path(SILVER, "03"), file.path(SILVER, "04"),
   file.path(SILVER, "05"), file.path(SILVER, "06"),
+  file.path(SILVER, "10"),
   GOLD, LOGS,
   file.path(ROOT, "07_reports"), TABLES,
   file.path(TABLES, "01"), file.path(TABLES, "04"),
   file.path(TABLES, "05"), file.path(TABLES, "06"),
   file.path(TABLES, "07"), file.path(TABLES, "09"),
-  file.path(TABLES, "10"), FIGS
+  file.path(TABLES, "10"), file.path(TABLES, "12"), FIGS
 )) {
   dir.create(d, showWarnings = FALSE, recursive = TRUE)
 }

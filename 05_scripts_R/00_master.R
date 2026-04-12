@@ -31,7 +31,8 @@ step_files <- c(
   "08_figures.R",
   "09_vat_determinants.R",
   "10_reform_chicken_inputs.R",
-  "11_reform_figures.R"
+  "11_reform_figures.R",
+  "12_poverty_incidence.R"
 )
 
 for (f in step_files) {
@@ -41,7 +42,7 @@ for (f in step_files) {
 # ── Pipeline definition (inspired by INES enchainement.R) ────────────────────
 # data.frame with one row per step: id, description, function name
 enchainement <- tibble::tibble(
-  etape_id    = 1:12,
+  etape_id    = 1:13,
   description = c(
     "Pr\u00e9paration des donn\u00e9es EHCVM",
     "Mapping TVA par produit",
@@ -54,7 +55,8 @@ enchainement <- tibble::tibble(
     "Figures analytiques (fig1\u2013fig4)",
     "D\u00e9terminants de la TVA effective (r\u00e9gressions OLS)",
     "Simulation r\u00e9forme intrants avicoles",
-    "Figures r\u00e9forme (figR1\u2013figR4)"
+    "Figures r\u00e9forme (figR1\u2013figR4)",
+    "Incidence sur la pauvret\u00e9 (FGT) \u2014 TVA et r\u00e9forme avicole"
   ),
   fonction = c(
     "prepare_data",
@@ -68,7 +70,8 @@ enchainement <- tibble::tibble(
     "run_figures",
     "run_determinants",
     "run_reform_chicken",
-    "run_reform_figures"
+    "run_reform_figures",
+    "run_poverty_incidence"
   )
 )
 
@@ -86,7 +89,7 @@ paths <- list(
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
 lance_pipeline <- function(premiere_etape = 1,
-                           derniere_etape  = 12,
+                           derniere_etape  = 13,
                            verbose         = TRUE) {
 
   steps <- dplyr::filter(enchainement,
@@ -136,4 +139,4 @@ lance_pipeline <- function(premiere_etape = 1,
 }
 
 # ── Run ────────────────────────────────────────────────────────────────────────
-lance_pipeline(premiere_etape = 1, derniere_etape = 12)
+lance_pipeline(premiere_etape = 1, derniere_etape = 13)

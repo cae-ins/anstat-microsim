@@ -28,8 +28,8 @@ run_sensitivity_ranking <- function(paths) {
   )
 
   # ── Merge welfare variables ───────────────────────────────────────────────
-  welfare_data <- haven::read_dta(
-    file.path(paths$DATA, "ehcvm_welfare_2b_CIV2021.dta"),
+  welfare_data <- load_raw_dta(
+    "ehcvm_welfare_2b_CIV2021.dta",
     col_select = c("hhid", "eqadu1", "eqadu2", "hgender", "hage",
                    "hmstat", "heduc", "halfa2", "halfa", "hbranch",
                    "pcexp", "zref", "hhsize")
