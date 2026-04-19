@@ -31,7 +31,7 @@ map_tax <- function(paths) {
 
   # ── Import Excel mapping ──────────────────────────────────────────────────
   raw <- readxl::read_excel(
-    file.path(paths$DATA, "COPR_EHCVM_TVA_renseigne.xlsx"),
+    file.path(paths$ROOT, "01_data_sources", "COPR_EHCVM_TVA_renseigne.xlsx"),
     sheet = "TVA_detail"
   )
 
@@ -72,7 +72,7 @@ map_tax <- function(paths) {
   # Prepare merge keys (code + produit as character)
   conso <- conso %>%
     dplyr::mutate(
-      code    = as.character(codpr),
+      code    = as.character(as.integer(codpr)),
       produit = as.character(produit)
     )
 

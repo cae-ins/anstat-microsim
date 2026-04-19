@@ -93,7 +93,85 @@ prepare_data <- function(paths) {
   export_fig(p_logdepan,
              file.path(paths$FIGS, "log_depan_af_cleaning.png"))
 
-  # ── Convert Stata labelled columns to factors ─────────────────────────────
+  # ── Decode codpr labels (equivalent to Stata: decode codpr, gen(produit)) ─
+  codpr_labels <- attr(df$codpr, "labels")
+  if (!is.null(codpr_labels)) {
+    label_lookup <- setNames(names(codpr_labels), as.character(codpr_labels))
+    df$produit <- label_lookup[as.character(as.double(df$codpr))]
+  }
+  df$codpr <- as.double(df$codpr)
+
+  # ── Map codpr to COICOP division (EHCVM-II CIV2021 nomenclature) ────────
+  # Based on EHCVM questionnaire structure and COICOP-HBS classification
+  df$coicop <- dplyr::case_when(
+    # 1 - Food and non-alcoholic beverages
+    df$codpr %in% 1:163   ~ 1L,
+    df$codpr %in% 166:177  ~ 1L,
+    # 2 - Alcoholic beverages, tobacco
+    df$codpr %in% c(164, 165, 197, 201, 301, 302) ~ 2L,
+    # 3 - Clothing and footwear
+    df$codpr == 401        ~ 3L,    # shoe repair
+    df$codpr %in% 501:521  ~ 3L,
+    # 4 - Housing, water, electricity, gas, fuels
+    df$codpr %in% 202:207  ~ 4L,    # kerosene, charcoal, firewood, candles
+    df$codpr %in% 303:305  ~ 4L,    # gas, generator fuel, batteries
+    df$codpr %in% 330:334  ~ 4L,    # rent, water, electricity
+    df$codpr %in% 601:602  ~ 4L,    # housing maintenance
+    df$codpr %in% 609:612  ~ 4L,    # utility connection fees
+    df$codpr %in% 618:619  ~ 4L,    # solar panels
+    # 5 - Furnishings, household equipment, routine maintenance
+    df$codpr == 217        ~ 5L,    # grain milling
+    df$codpr %in% 306:310  ~ 5L,    # soap, detergent, insecticide, maid, laundry
+    df$codpr == 402        ~ 5L,    # light bulbs
+    df$codpr %in% 613:617  ~ 5L,    # furniture, linen
+    df$codpr %in% 620:625  ~ 5L,    # appliance repair, cookware, utensils
+    # 6 - Health
+    df$codpr == 416        ~ 6L,    # OTC medications
+    df$codpr == 419        ~ 6L,    # contraceptives
+    df$codpr %in% 761:777  ~ 6L,    # consultations, exams, hospitalization
+    # 7 - Transport
+    df$codpr %in% 208:215  ~ 7L,    # fuel, urban transport
+    df$codpr %in% 311:312  ~ 7L,    # vehicle wash, parking
+    df$codpr %in% 403:407  ~ 7L,    # lubricants, vehicle repair, intercity transport
+    df$codpr == 421        ~ 7L,    # toll
+    df$codpr %in% 626:636  ~ 7L,    # vehicle purchase, parts, insurance, rental, travel
+    # 8 - Information and communication
+    df$codpr == 313        ~ 8L,    # phone booth
+    df$codpr %in% 335:338  ~ 8L,    # phone, internet, cable TV, mobile recharge
+    df$codpr %in% 408:409  ~ 8L,    # post, fax
+    df$codpr == 420        ~ 8L,    # photocopies
+    df$codpr %in% 637:641  ~ 8L,    # phone, electronics purchase, repair
+    # 9 - Recreation, sport, culture
+    df$codpr == 216        ~ 9L,    # newspapers
+    df$codpr %in% 314:315  ~ 9L,    # lottery, magazines
+    df$codpr %in% 410:414  ~ 9L,    # gardening, pets, sports, cinema
+    df$codpr %in% 642:644  ~ 9L,    # sports items, books, stationery
+    # 10 - Education
+    df$codpr %in% 646:647  ~ 10L,   # professional training, tutoring
+    df$codpr %in% 701:748  ~ 10L,   # all education levels
+    # 11 - Restaurants and accommodation
+    df$codpr %in% 191:196  ~ 11L,   # meals outside home
+    df$codpr == 648        ~ 11L,   # hotel
+    # 12 - Insurance and financial services
+    df$codpr %in% 652:657  ~ 12L,   # insurance, administrative fees
+    # 13 - Personal care, social protection, miscellaneous
+    df$codpr %in% 316:324  ~ 13L,   # hairdressing, toiletries, personal hygiene
+    df$codpr == 415        ~ 13L,   # washable COVID mask
+    df$codpr %in% 417:418  ~ 13L,   # perfume, toothbrush
+    df$codpr %in% 645:645  ~ 13L,   # pilgrimage
+    df$codpr %in% 649:651  ~ 13L,   # watches, jewelry, personal effects
+    df$codpr == 658        ~ 13L,   # other services (funeral, etc.)
+    # 98 - Non-consumption: use value of durables
+    df$codpr %in% 801:843  ~ 98L,
+    # 99 - Non-consumption: ceremonies
+    df$codpr %in% 901:912  ~ 99L,
+    # Residual
+    TRUE                   ~ 99L
+  )
+  message(sprintf("  COICOP assigned: %d obs | Missing: %d",
+                  sum(!is.na(df$coicop)), sum(is.na(df$coicop))))
+
+  # ── Convert remaining Stata labelled columns to factors ──────────────────
   df <- haven::as_factor(df)
 
   # ── Save cleaned dataset ──────────────────────────────────────────────────

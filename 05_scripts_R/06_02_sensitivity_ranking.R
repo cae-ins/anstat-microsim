@@ -59,8 +59,8 @@ run_sensitivity_ranking <- function(paths) {
   for (rank in c("total", "pc", "ae1", "ae2")) {
     dcol <- paste0("decile_", rank)
     out  <- hh %>%
-      dplyr::rename(decile = !!dcol) %>%
-      dplyr::group_by(decile) %>%
+      dplyr::mutate(decile_rank = .data[[dcol]]) %>%
+      dplyr::group_by(decile_rank) %>%
       dplyr::summarise(
         eff_vat_strict = weighted.mean(eff_vat_strict, hhweight),
         eff_vat_s2     = weighted.mean(eff_vat_s2,     hhweight),

@@ -47,6 +47,8 @@ run_poverty_incidence <- function(paths) {
   hh <- hh_vat %>%
     dplyr::left_join(welfare, by = "hhid") %>%
     dplyr::mutate(
+      # Poids individu : réplique le taux officiel au niveau population
+      w_ind              = hhweight * hhsize,
       pcexp_after_strict = pcexp - vat_strict / hhsize,
       pcexp_after_s2     = pcexp - vat_s2     / hhsize,
       pcexp_after_s3     = pcexp - vat_s3     / hhsize
@@ -63,7 +65,9 @@ run_poverty_incidence <- function(paths) {
   # alpha = 1 : écart de pauvreté (P1)
   # alpha = 2 : sévérité de la pauvreté (P2)
   fgt <- function(y, z, w, alpha) {
-    weighted.mean(pmax(0, (z - y) / z)^alpha, w)
+    gap <- pmax(0, 1 - y / z)
+    if (alpha == 0L) weighted.mean(gap > 0, w, na.rm = TRUE)
+    else             weighted.mean(gap^alpha, w, na.rm = TRUE)
   }
 
   # ── Libellés des concepts de bien-être ────────────────────────────────────
@@ -86,9 +90,9 @@ run_poverty_incidence <- function(paths) {
       fn <- function(df) {
         tibble::tibble(
           concept = welfare_labels[[wv]],
-          p0      = fgt(df[[wv]], df$zref, df$hhweight, 0),
-          p1      = fgt(df[[wv]], df$zref, df$hhweight, 1),
-          p2      = fgt(df[[wv]], df$zref, df$hhweight, 2)
+          p0      = fgt(df[[wv]], df$zref, df$w_ind, 0),
+          p1      = fgt(df[[wv]], df$zref, df$w_ind, 1),
+          p2      = fgt(df[[wv]], df$zref, df$w_ind, 2)
         )
       }
       if (is.null(group_var)) {
@@ -103,9 +107,9 @@ run_poverty_incidence <- function(paths) {
   }
 
   # ── Table nationale ────────────────────────────────────────────────────────
-  p0_base <- fgt(hh$pcexp, hh$zref, hh$hhweight, 0)
-  p1_base <- fgt(hh$pcexp, hh$zref, hh$hhweight, 1)
-  p2_base <- fgt(hh$pcexp, hh$zref, hh$hhweight, 2)
+  p0_base <- fgt(hh$pcexp, hh$zref, hh$w_ind, 0)
+  p1_base <- fgt(hh$pcexp, hh$zref, hh$w_ind, 1)
+  p2_base <- fgt(hh$pcexp, hh$zref, hh$w_ind, 2)
 
   fgt_national <- compute_fgt_table(hh) %>%
     dplyr::mutate(
