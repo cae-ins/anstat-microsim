@@ -1,210 +1,205 @@
 ********************************************************************************
 * 00_master.do
-* Master script — run the full pipeline
+* Script maitre — execute le pipeline complet
 *
-* This script must be run from the project root directory.
-* It executes all steps in sequence:
-*   1. Setup environment
-*   2. Prepare raw data
-*   3. Apply fiscal mapping
-*   4. Compute taxes and CEQ variables
-*   5. Run analysis and export outputs
-*AUTHOR: Armand Kouakou Djaha, MSc
-********************************************************************************
+* Ce script doit etre execute depuis le dossier racine du projet.
+* Il execute toutes les etapes dans l'ordre :
+*   1. Configuration de l'environnement
+*   2. Preparation des donnees brutes
+*   3. Application du mapping fiscal
+*   4. Calcul des taxes et variables CEQ
+*   5. Analyse et export des resultats
+ ********************************************************************************
 
 clear all
 set more off
 
-********************************************************************************
-* STEP 0 — Setup environment
-********************************************************************************
+ ********************************************************************************
+* ETAPE 0 — Configuration de l'environnement
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 0: Setting up environment"
+di as text "ETAPE 0 : Configuration de l'environnement"
 di as text "--------------------------------------------------"
 
-* Run this script from the project root directory.
-* 00_setup.do will exit with an error if the working directory is incorrect.
+* Executer ce script depuis le dossier racine du projet.
+* 00_setup.do s'arretera avec une erreur si le dossier de travail est incorrect.
 do "04_scripts/00_setup.do"
 
-********************************************************************************
-* STEP 1 — Data preparation
-********************************************************************************
+ ********************************************************************************
+* ETAPE 1 — Preparation des donnees
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 1: Preparing data"
+di as text "ETAPE 1 : Preparation des donnees"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/01_prepare_data.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 01_prepare_data.do"
+    di as error "❌ ERREUR dans 01_prepare_data.do"
     exit 1
 }
 
-********************************************************************************
-* STEP 2 — Fiscal mapping
-********************************************************************************
+ ********************************************************************************
+* ETAPE 2 — Mapping fiscal
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 2: Applying fiscal mapping"
+di as text "ETAPE 2 : Application du mapping fiscal"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/02_mapping_tax.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 02_mapping_tax.do"
+    di as error "❌ ERREUR dans 02_mapping_tax.do"
     exit 1
 }
 
-********************************************************************************
-* STEP 3 — Compute taxes 
-********************************************************************************
+ ********************************************************************************
+* ETAPE 3 — Calcul des taxes
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 3: Computing taxes"
+di as text "ETAPE 3 : Calcul des taxes"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/03_compute_taxes.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 03_compute_taxes.do"
+    di as error "❌ ERREUR dans 03_compute_taxes.do"
     exit 1
 }
 
-********************************************************************************
-* STEP 4 — Analysis
-********************************************************************************
+ ********************************************************************************
+* ETAPE 4 — Analyse
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 4: Running analysis"
+di as text "ETAPE 4 : Execution de l'analyse"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/04_analysis.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 04_analysis.do"
+    di as error "❌ ERREUR dans 04_analysis.do"
     exit 1
 }
 
-********************************************************************************
-* STEP 5 — Progressivity
-********************************************************************************
+ ********************************************************************************
+* ETAPE 5 — Progressivite
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 5 : Progressivity"
+di as text "ETAPE 5 : Progressivite"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/05_progressivity.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 05_progressivity.do"
+    di as error "❌ ERREUR dans 05_progressivity.do"
     exit 1
 }
 
-
-********************************************************************************
-* STEP 6.1 — Robustness
-********************************************************************************
+ ********************************************************************************
+* ETAPE 6.1 — Robustesse
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 6.1 : Robustness"
+di as text "ETAPE 6.1 : Robustesse"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/06_01_sensitivity_taxation.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 06_01_sensitivity_taxation.do"
+    di as error "❌ ERREUR dans 06_01_sensitivity_taxation.do"
     exit 1
 }
 
-
-********************************************************************************
-* STEP 6.2 — Robustness
-********************************************************************************
+ ********************************************************************************
+* ETAPE 6.2 — Robustesse
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 6.2 : Robustness"
+di as text "ETAPE 6.2 : Robustesse"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/06_02_sensitivity_ranking.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 06_02_sensitivity_ranking.do"
+    di as error "❌ ERREUR dans 06_02_sensitivity_ranking.do"
     exit 1
 }
 
-
-********************************************************************************
-* STEP 7 — Appendix
-********************************************************************************
+ ********************************************************************************
+* ETAPE 7 — Annexes
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 7 : Appendix"
+di as text "ETAPE 7 : Annexes"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/07_appendix_tables.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 07_appendix_tables.do"
+    di as error "❌ ERREUR dans 07_appendix_tables.do"
     exit 1
 }
 
-********************************************************************************
-* STEP 8 — Figures
-********************************************************************************
+ ********************************************************************************
+* ETAPE 8 — Figures
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 7 : figures"
+di as text "ETAPE 8 : Figures"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/08_figures.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 08_figures.do"
+    di as error "❌ ERREUR dans 08_figures.do"
     exit 1
 }
 
-********************************************************************************
-* STEP 9 — Determinants
-********************************************************************************
+ ********************************************************************************
+* ETAPE 9 — Determinants
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 9 : determinants"
+di as text "ETAPE 9 : Determinants"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/09_vat_determinants.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 09_vat_determinants.do"
+    di as error "❌ ERREUR dans 09_vat_determinants.do"
     exit 1
 }
 
-
-********************************************************************************
-* STEP 10 — Reform scenarios
-********************************************************************************
+ ********************************************************************************
+* ETAPE 10 — Scenarios de reforme
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 10 : Reform scenarios"
+di as text "ETAPE 10 : Scenarios de reforme"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/10_reform_chicken_inputs.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 10_reform_chicken_inputs.do"
+    di as error "❌ ERREUR dans 10_reform_chicken_inputs.do"
     exit 1
 }
 
-********************************************************************************
-* STEP 11 — Reform figures
-********************************************************************************
+ ********************************************************************************
+* ETAPE 11 — Figures de reforme
+ ********************************************************************************
 
 di as text "--------------------------------------------------"
-di as text "STEP 11 : Reform figures"
+di as text "ETAPE 11 : Figures de reforme"
 di as text "--------------------------------------------------"
 
 capture noisily do "$CODE/11_reform_figures.do"
 if _rc != 0 {
-    di as error "❌ ERROR in 11_reform_figures.do"
+    di as error "❌ ERREUR dans 11_reform_figures.do"
     exit 1
 }
 
-********************************************************************************
-* END
-********************************************************************************
+ ********************************************************************************
+* FIN
+ ********************************************************************************
 
 di as result "=================================================="
-di as result " PROJECT COMPLETED SUCCESSFULLY"
+di as result " PROJET TERMINE AVEC SUCCES"
 di as result "=================================================="
 
 log close

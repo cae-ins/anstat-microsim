@@ -1,25 +1,25 @@
 # 09_vat_determinants.R
 #
-# OBJECTIVE:
-# Analyze socio-demographic determinants of effective VAT exposure across
-# three informality scenarios (strict, S2, S3).
+# OBJECTIF :
+# Analyser les determinants socio-demographiques de l'exposition effective a la TVA a travers
+# trois scenarios d'informelite (strict, S2, S3).
 #
-# APPROACH:
-# OLS with cluster-robust SE at the PSU (grappe) level.
-# Four nested models per dependent variable:
-#   M1 : bivariate (lconso_w only)
-#   M2 : + household demographics
-#   M3 : + milieu + region fixed effects
-#   M4 : M3 + n_items (consumption diversification)
+# APPROCHE :
+# MCO avec SE robustes en cluster au niveau PSU (grappe).
+# Quatre modeles embotes par variable dependante :
+#   M1 : bivarie (lconso_w seulement)
+#   M2 : + demographiques du menage
+#   M3 : + milieu + effets fixes de region
+#   M4 : M3 + n_items (diversification de la consommation)
 #
-# INPUT:  SILVER/06/fiscal_sensitivity_taxation.parquet
-#         SILVER/01/conso_clean.parquet  (for n_items)
-#         DATA/ehcvm_welfare_2b_CIV2021.dta (for socio-demographics)
-# OUTPUT: TABLES/09/09_reg_panel_*.xlsx
-#         FIGS/fig6_margins_income_milieu.png
+# ENTREE :  SILVER/06/fiscal_sensitivity_taxation.parquet
+#         SILVER/01/conso_clean.parquet  (pour n_items)
+#         DATA/ehcvm_welfare_2b_CIV2021.dta (pour socio-demographiques)
+# SORTIE :  TABLES/09/09_reg_panel_*.xlsx
+#         FIG8/fig6_margins_income_milieu.png
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : Armand Kouakou Djaha, MSc (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_determinants <- function(paths) {
 
@@ -42,18 +42,35 @@ run_determinants <- function(paths) {
     col_select = c("hhid", "hhsize", "hgender", "hage",
                    "heduc", "halfa2", "grappe", "region")
   )
+  assert_required_columns(
+    welfare_data,
+    c("hhid", "hhsize", "hgender", "heduc", "grappe", "region"),
+    object_name = "ehcvm_welfare_2b_CIV2021.dta"
+  )
 
   hh <- hh_sens %>%
     dplyr::left_join(n_items_hh,   by = "hhid") %>%
-    dplyr::left_join(welfare_data, by = "hhid") %>%
+    dplyr::left_join(welfare_data, by = "hhid", suffix = c("", "_welfare")) %>%
     dplyr::mutate(
+      region      = dplyr::coalesce(
+        as.character(region),
+        as.character(haven::as_factor(region_welfare))
+      ),
       lconso_w    = log(conso_w),
       lconso_w2   = lconso_w^2,
       educ_high   = as.integer(heduc >= 4 & !is.na(heduc)),
       head_female = as.integer(hgender == 2 & !is.na(hgender)),
       urban       = as.integer(as.character(milieu) == "Urbain"),
       region_fac  = as.factor(as.character(region))
-    )
+    ) %>%
+    dplyr::select(-region_welfare)
+
+  assert_required_columns(
+    hh,
+    c("hhid", "hhweight", "conso_w", "milieu", "region", "grappe",
+      "hhsize", "n_items", "eff_vat_strict", "eff_vat_s2", "eff_vat_s3"),
+    object_name = "determinants input"
+  )
 
   # ── Descriptive stats ─────────────────────────────────────────────────────
   message(sprintf("  Correlation n_items / lconso_w: %.3f",
@@ -66,6 +83,11 @@ run_determinants <- function(paths) {
   # ── OLS models ────────────────────────────────────────────────────────────
   fit_ols <- function(formula_str, data) {
     lm(as.formula(formula_str), data = data, weights = data$hhweight)
+  }
+
+  cluster_for_model <- function(model, data, cluster_col = "grappe") {
+    used_rows <- as.integer(rownames(stats::model.frame(model)))
+    data[[cluster_col]][used_rows]
   }
 
   models <- list()
@@ -95,7 +117,7 @@ run_determinants <- function(paths) {
     panel_models <- models[grep(paste0("^", panel, "_"), names(models))]
 
     tab_list <- purrr::imap(panel_models, function(m, name) {
-      cl  <- hh$grappe[!is.na(hh$grappe)]
+      cl  <- cluster_for_model(m, hh)
       res <- tidy_lm_robust(m, cluster_var = cl) %>%
         dplyr::filter(term %in% coef_keep) %>%
         dplyr::mutate(model = name)
@@ -112,7 +134,7 @@ run_determinants <- function(paths) {
   m3_tab <- purrr::imap(
     models[grepl("_m3$", names(models))],
     function(m, name) {
-      cl  <- hh$grappe[!is.na(hh$grappe)]
+      cl  <- cluster_for_model(m, hh)
       tidy_lm_robust(m, cluster_var = cl) %>%
         dplyr::filter(term %in% c("lconso_w", "hhsize", "head_female",
                                    "educ_high", "urban", "(Intercept)")) %>%

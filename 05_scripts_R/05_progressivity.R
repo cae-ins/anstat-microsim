@@ -1,36 +1,36 @@
 # 05_progressivity.R
 #
-# OBJECTIVE:
-# Measure VAT progressivity with CEQ-style concentration indices.
+# OBJECTIF :
+# Mesurer la progressivite de la TVA avec les indices de concentration de type CEQ.
 #
-# INDICES:
-# - Gini (pre- and post-tax consumption)
-# - Concentration index CI(VAT)
-# - Kakwani = CI(VAT) - Gini(pre-tax)
-# - Reynolds-Smolensky = Gini_after - Gini_before
+# INDICES :
+# - Gini (consommation pre- et post-taxe)
+# - Indice de concentration CI(TVA)
+# - Kakwani = CI(TVA) - Gini(pre-tax)
+# - Reynolds-Smolensky = Gini_apres - Gini_avant
 #
-# CURVES:
-# - Lorenz curve (grouped, by decile)
-# - Concentration curve of VAT (grouped, by decile)
+# COURBES :
+# - Courbe de Lorenz (groupee, par decile)
+# - Courbe de concentration de la TVA (groupee, par decile)
 #
-# INPUT:  SILVER/04/fiscal_data_analysis_ready.parquet
-# OUTPUT: TABLES/05/05_progressivity.xlsx
-#         TABLES/05/05_lorenz_grouped_consumption.xlsx
-#         TABLES/05/05_concentration_grouped_vat.xlsx
-#         SILVER/05/05_progressivity.parquet
+# ENTREE :  SILVER/04/fiscal_data_analysis_ready.parquet
+# SORTIE :  TABLES/05/05_progressivity.xlsx
+#           TABLES/05/05_lorenz_grouped_consumption.xlsx
+#           TABLES/05/05_concentration_grouped_vat.xlsx
+#           SILVER/05/05_progressivity.parquet
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : Armand Kouakou Djaha, MSc (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_progressivity <- function(paths) {
 
-  message(">>> STEP 5: Progressivity analysis")
+  message(">>> ETAPE 5 : Analyse de progressivite")
 
   hh <- load_parquet(
     file.path(paths$SILVER, "04", "fiscal_data_analysis_ready.parquet")
   )
 
-  # ── CEQ indices ───────────────────────────────────────────────────────────
+  # ── Indices CEQ ───────────────────────────────────────────────────────────
   G_market  <- weighted_gini(hh$conso_w,           hh$hhweight)
   G_consump <- weighted_gini(hh$consumable_income,  hh$hhweight)
   C_vat     <- weighted_conindex(hh$vat_w, hh$conso_w, hh$hhweight)
@@ -38,16 +38,16 @@ run_progressivity <- function(paths) {
   RS        <- G_consump - G_market
 
   message("--------------------------------")
-  message(sprintf("Gini before  = %.4f", G_market))
-  message(sprintf("Gini after   = %.4f", G_consump))
-  message(sprintf("C(VAT)       = %.4f", C_vat))
+  message(sprintf("Gini avant   = %.4f", G_market))
+  message(sprintf("Gini apres   = %.4f", G_consump))
+  message(sprintf("C(TVA)       = %.4f", C_vat))
   message(sprintf("Kakwani      = %.4f", Kakwani))
   message(sprintf("Reynolds-S.  = %.4f", RS))
   message("--------------------------------")
 
   ceq_result <- tibble::tibble(
     scenario    = "baseline",
-    description = "VAT system — official rates, strict pass-through",
+    description = "Systeme TVA — taux officiels, pass-through strict",
     g_market    = G_market,
     g_after     = G_consump,
     c_vat       = C_vat,
@@ -60,7 +60,7 @@ run_progressivity <- function(paths) {
   export_excel(ceq_result,
                file.path(paths$TABLES, "05", "05_progressivity.xlsx"))
 
-  # ── Lorenz curve (grouped, by decile) ────────────────────────────────────
+  # ── Courbe de Lorenz (groupee, par decile) ────────────────────────────────
   lorenz <- hh %>%
     dplyr::group_by(decile) %>%
     dplyr::summarise(
@@ -82,7 +82,7 @@ run_progressivity <- function(paths) {
   export_excel(lorenz,
                file.path(paths$TABLES, "05", "05_lorenz_grouped_consumption.xlsx"))
 
-  # ── Concentration curve of VAT (grouped, by decile) ──────────────────────
+  # ── Courbe de concentration de la TVA (groupee, par decile) ───────────
   concentration <- hh %>%
     dplyr::group_by(decile) %>%
     dplyr::summarise(

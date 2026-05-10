@@ -1,28 +1,28 @@
 # =============================================================================
-# Étape 15 — Simulation d'une réforme TVA : hausse de 0 % à 9 %
+# Etape 15 — Simulation d'une reforme TVA : hausse de 0 % a 9 %
 #
 # OBJECTIF :
-# Mesurer l'impact distributif d'une réforme TVA qui applique un taux de 9 %
-# à des produits actuellement exonérés (r_vat_official == 0).
-# Focus : taux de pauvreté (P0/P1/P2) et charge par quintile.
+# Mesurer l'impact distributif d'une reforme TVA qui applique un taux de 9 %
+# a des produits actuellement exoneres (r_vat_official == 0).
+# Focus : taux de pauvrete (P0/P1/P2) et charge par quintile.
 #
-# SCÉNARIOS (modifiables dans la section CONFIG) :
+# SCENARIOS (modifiables dans la section CONFIG) :
 #   S_agri     — produits agricoles bruts (ICIO : A01_02, A03)
 #   S_commerce — commerce/distribution (ICIO : G, formalisation)
-#   S_all      — tous produits à 0% hors services publics (E, L, P, Q)
+#   S_all      — tous produits a 0% hors services publics (E, L, P, Q)
 #
 # APPROCHE :
 #   delta_vat_hh = Σ_k (depan_w_k × taux_reforme)  ∀ k dans l'ensemble cible
 #   pcexp_reform = pcexp − delta_vat_hh / hhsize
 #   Charge relative = delta_vat_hh / (pcexp × hhsize)  par quintile
 #
-# INPUT :
+# ENTREE :
 #   SILVER/01/conso_clean.parquet
 #   SILVER/06/fiscal_sensitivity_taxation.parquet
 #   01_data_sources/concordance_codpr_ICIO.csv
 #   DATA/ehcvm_welfare_2b_CIV2021.dta
 #
-# OUTPUT :
+# SORTIE :
 #   TABLES/15/15_01_fgt_reform_national.xlsx
 #   TABLES/15/15_02_burden_by_quintile.xlsx
 #   TABLES/15/15_03_fgt_by_quintile.xlsx
@@ -31,7 +31,7 @@
 #   FIGS/fig_reform_fgt_impact.png
 #   SILVER/15/reform_vat_hh.parquet
 # =============================================================================
-library(dplyr); library(tidyr); library(ggplot2); library(readr); library(readxl)
+library(dplyr); library(tidyr); library(ggplot2)
 
 source("05_scripts_R/00_setup.R")
 
@@ -46,18 +46,29 @@ TAUX_REFORME <- 0.09   # taux TVA appliqué aux produits cibles
 SECTEURS_HORS_REFORME <- c("E", "L", "P", "Q", "T")
 
 # ── 1. CHARGEMENT ─────────────────────────────────────────────────────────────
-conc <- read_csv(
-  file.path(ROOT, "01_data_sources", "concordance_codpr_ICIO.csv"),
-  show_col_types = FALSE
+conc <- read_source_csv(
+  path_parts = c("concordance_codpr_ICIO.csv"),
+  .label = "codpr-ICIO concordance",
+  .required_cols = c("codpr", "secteur_ICIO")
 ) %>% filter(secteur_ICIO != "hors_champ")
 
-conso <- arrow::read_parquet(
+conso <- load_parquet(
   file.path(SILVER, "01", "conso_clean.parquet")
 ) %>% select(hhid, hhweight, region, milieu, codpr, depan_w, r_vat_official)
+assert_required_columns(
+  conso,
+  c("hhid", "hhweight", "codpr", "depan_w", "r_vat_official"),
+  object_name = "conso_clean.parquet"
+)
 
-hh_sens <- arrow::read_parquet(
+hh_sens <- load_parquet(
   file.path(SILVER, "06", "fiscal_sensitivity_taxation.parquet")
 ) %>% select(hhid, decile)
+assert_required_columns(
+  hh_sens,
+  c("hhid", "decile"),
+  object_name = "fiscal_sensitivity_taxation.parquet"
+)
 
 welfare <- load_raw_dta(
   "ehcvm_welfare_2b_CIV2021.dta",
@@ -347,7 +358,7 @@ hh_all <- purrr::imap_dfr(results, function(res, sc) {
     mutate(scenario = sc)
 })
 
-arrow::write_parquet(hh_all,
-                     file.path(SILVER_15, "reform_vat_hh.parquet"))
+save_parquet(hh_all,
+             file.path(SILVER_15, "reform_vat_hh.parquet"))
 
 message("\nÉtape 15 terminée — outputs dans ", SILVER_15, " et ", file.path(TABLES, "15"))

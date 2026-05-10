@@ -1,30 +1,28 @@
 ********************************************************************************
 * 06_02_sensitivity_ranking.do
 *
-* OBJECTIVE:
-* Sensitivity analysis of VAT incidence to alternative distributive rankings.
+* OBJECTIF :
+* Analyse de sensibilite de l'incidence TVA aux classements distributifs alternatifs.
 *
-* EMPIRICAL RATIONALE:
-* The baseline ranking uses total household consumption. This is standard when
-* consumption is treated as a proxy for pre-fiscal living standards. However,
-* household size and composition can affect welfare comparisons. We therefore
-* compare three ranking concepts:
-*   1) total household consumption
-*   2) consumption per capita
-*   3) consumption per adult equivalent
+* JUSTIFICATION EMPIRIQUE :
+* Le classement de base utilise la consommation totale du menage. C'est standard quand
+* la consommation est traitee comme un proxy du niveau de vie pre-fiscal. Cependant,
+* la taille et la composition du menage peuvent affecter les comparaisons de bien-etre.
+* On compare donc trois concepts de classement :
+*   1) consommation totale du menage
+*   2) consommation par tete
+*   3) consommation par adulte equivalent
 *
-* The per capita and adult-equivalent rankings are not alternative tax burdens;
-* they are alternative ways of ordering households in the distribution.
+* Les classements par tete et adulte equivalent ne sont pas des charges fiscales alternatives ;
+* ce sont des facons alternatives d'ordonner les menages dans la distribution.
 *
-* REQUIRED INPUTS:
-* To compute per capita and adult-equivalent welfare, the dataset must contain:
-*   - hhsize  : household size
-*   - eqadu1  : number of adults 
-*   - eqadu2 : number of adults 
+* ENTREES REQUISES :
+* Pour calculer le bien-etre par tete et adulte equivalent, le jeu de donnees doit contenir :
+*   - hhsize  : taille du menage
+*   - eqadu1  : nombre d'adultes 
+*   - eqadu2 : nombre d'adultes 
 
-*AUTHOR: Armand Kouakou Djaha, MSc
-
-********************************************************************************
+ ********************************************************************************
 
 use "$SILVER/06/fiscal_sensitivity_taxation.dta", clear
 by hhid: gen hh_tag = (_n == 1)
@@ -32,51 +30,51 @@ keep if hh_tag == 1
 drop hh_tag
 merge 1:1 hhid using "$DATA/ehcvm_welfare_civ2021", keepusing(eqadu1 eqadu2 hgender hage hmstat heduc halfa2 halfa hbranch pcexp zref hhsize)
 drop _merge
-********************************************************************************
-* STEP 0 — Required variables
-********************************************************************************
+ ********************************************************************************
+* ETAPE 0 — Variables requises
+ ********************************************************************************
 
-********************************************************************************
-* STEP 1 — Validation
-********************************************************************************
+ ********************************************************************************
+* ETAPE 1 — Validation
+ ********************************************************************************
 
 assert !missing(hhid, hhweight, conso_w, vat_strict)
 
 
-********************************************************************************
-* STEP 2 — Welfare concepts
-********************************************************************************
+ ********************************************************************************
+* ETAPE 2 — Concepts de bien-etre
+ ********************************************************************************
 
-* Per capita consumption
+* Consommation par tete
 gen conso_pc = conso_w / hhsize
-label var conso_pc "Consumption per capita"
+label var conso_pc "Consommation par tete"
 
-* Adult-equivalent consumption (FAO scale)
+* Consommation par adulte equivalent (Echelle FAO)
 gen conso_ae1 = conso_w / eqadu1
-label var conso_ae1 "Consumption per adult equivalent-1"
+label var conso_ae1 "Consommation par adulte equivalent-1"
 
 gen conso_ae2 = conso_w / eqadu2
-label var conso_ae2 "Consumption per adult equivalent-2"
+label var conso_ae2 "Consommation par adulte equivalent-2"
 
-********************************************************************************
-* STEP 3 — Create deciles
-********************************************************************************
+ ********************************************************************************
+* ETAPE 3 — Creer les deciles
+ ********************************************************************************
 
 xtile decile_total = conso_w  [pw=hhweight], n(10)
 xtile decile_pc    = conso_pc [pw=hhweight], n(10)
 xtile decile_ae1    = conso_ae1 [pw=hhweight], n(10)
 xtile decile_ae2    = conso_ae2 [pw=hhweight], n(10)
 
-label define dec_lbl 1 "D1 poorest" 2 "D2" 3 "D3" 4 "D4" 5 "D5" ///
-                     6 "D6" 7 "D7" 8 "D8" 9 "D9" 10 "D10 richest", replace
+label define dec_lbl 1 "D1 le plus pauvre" 2 "D2" 3 "D3" 4 "D4" 5 "D5" ///
+                     6 "D6" 7 "D7" 8 "D8" 9 "D9" 10 "D10 le plus riche", replace
 
 foreach v in decile_total decile_pc decile_ae1 decile_ae2 {
     label values `v' dec_lbl
 }
 
-********************************************************************************
-* STEP 4 — Effective VAT rates by ranking
-********************************************************************************
+ ********************************************************************************
+* ETAPE 4 — Taux TVA effectif par classement
+ ********************************************************************************
 
 foreach rank in total pc ae1 ae2 {
     preserve
@@ -88,9 +86,9 @@ foreach rank in total pc ae1 ae2 {
     restore
 }
 
-********************************************************************************
-* STEP 5 — CEQ summary (FINAL CLEAN VERSION)
-********************************************************************************
+ ********************************************************************************
+* ETAPE 5 — Resume CEQ (VERSION FINALE NETTOYEE)
+ ********************************************************************************
 
 capture which ineqdeco
 if _rc ssc install ineqdeco
@@ -105,7 +103,7 @@ postfile ceq_handle str10 ranking str10 scenario ///
 
 foreach rank in total pc ae1 ae2 {
 
-    * Drop individuel — chaque variable supprimée indépendamment
+    * Supprimer individuellement — chaque variable supprimee independamment
     foreach v in welfare vat_adj_strict vat_adj_s2 vat_adj_s3 consumable {
         capture drop `v'
     }
@@ -155,6 +153,6 @@ foreach rank in total pc ae1 ae2 {
 }
 postclose ceq_handle
 
-********************************************************************************
-* END
-********************************************************************************
+ ********************************************************************************
+* FIN
+ ********************************************************************************

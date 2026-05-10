@@ -8,6 +8,43 @@
 #   USE_MINIO = TRUE   → read from MinIO via arrow S3 filesystem
 
 
+# Internal helper: fail fast on missing local files.
+assert_local_file_exists <- function(path, label = NULL) {
+  if (!file.exists(path)) {
+    stop(sprintf(
+      "%s not found: %s",
+      if (is.null(label)) "File" else label,
+      path
+    ))
+  }
+  invisible(path)
+}
+
+
+# Internal helper: validate required columns before downstream use.
+assert_required_columns <- function(df, required, object_name = deparse(substitute(df))) {
+  missing <- setdiff(required, names(df))
+  if (length(missing) > 0) {
+    stop(sprintf(
+      "%s is missing required columns: %s",
+      object_name,
+      paste(missing, collapse = ", ")
+    ))
+  }
+  invisible(df)
+}
+
+
+# Resolve a project source file without changing the current folder structure.
+source_file_path <- function(..., must_exist = TRUE, label = "Source file") {
+  path <- file.path(ROOT, "01_data_sources", ...)
+  if (must_exist) {
+    assert_local_file_exists(path, label = label)
+  }
+  path
+}
+
+
 # ── Raw .dta loader (local or MinIO) ─────────────────────────────────────────
 # Usage: load_raw_dta("ehcvm_welfare_2b_CIV2021.dta")
 #        load_raw_dta("ehcvm_welfare_2b_CIV2021.dta", col_select = c("hhid","hhsize"))
@@ -32,15 +69,50 @@ load_raw_dta <- function(filename, col_select = NULL, ...) {
       secret = MINIO_SECRET_KEY
     )
     message("  ← MinIO: ", MINIO_BUCKET_RAW, "/", s3_key)
-    haven::read_dta(tmp, col_select = col_select, ...)
+    if (is.null(col_select)) {
+      haven::read_dta(tmp, ...)
+    } else {
+      haven::read_dta(tmp, col_select = tidyselect::all_of(col_select), ...)
+    }
   } else {
     # ── Local path ────────────────────────────────────────────────────────────
     local_path <- file.path(DATA, filename)
-    if (!file.exists(local_path)) {
-      stop("File not found: ", local_path)
+    assert_local_file_exists(local_path, label = "Raw DTA file")
+    if (is.null(col_select)) {
+      haven::read_dta(local_path, ...)
+    } else {
+      haven::read_dta(local_path, col_select = tidyselect::all_of(col_select), ...)
     }
-    haven::read_dta(local_path, col_select = col_select, ...)
   }
+}
+
+
+read_source_excel <- function(path_parts, sheet = NULL, .label = "Excel source",
+                              .required_cols = NULL, ...) {
+  path <- do.call(source_file_path, c(as.list(path_parts), list(label = .label)))
+  df <- readxl::read_excel(path, sheet = sheet, ...)
+  if (!is.null(.required_cols)) {
+    assert_required_columns(df, .required_cols, object_name = basename(path))
+  }
+  df
+}
+
+
+read_source_csv <- function(path_parts, .label = "CSV source",
+                            .required_cols = NULL, ...) {
+  path <- do.call(source_file_path, c(as.list(path_parts), list(label = .label)))
+  df <- readr::read_csv(path, show_col_types = FALSE, ...)
+  if (!is.null(.required_cols)) {
+    assert_required_columns(df, .required_cols, object_name = basename(path))
+  }
+  df
+}
+
+
+read_source_csv_base <- function(path_parts, row.names = NULL, check.names = FALSE,
+                                 .label = "CSV source") {
+  path <- do.call(source_file_path, c(as.list(path_parts), list(label = .label)))
+  utils::read.csv(path, row.names = row.names, check.names = check.names)
 }
 
 
@@ -52,6 +124,7 @@ save_parquet <- function(df, path) {
 }
 
 load_parquet <- function(path) {
+  assert_local_file_exists(path, label = "Parquet file")
   arrow::read_parquet(path)
 }
 

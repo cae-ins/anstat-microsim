@@ -1,44 +1,49 @@
 # 06_02_sensitivity_ranking.R
 #
-# OBJECTIVE:
-# Sensitivity analysis of VAT incidence to alternative welfare rankings.
-# The baseline ranking uses total household consumption. Here we also test:
-#   - consumption per capita (conso_pc)
-#   - consumption per adult equivalent — FAO scale 1 (conso_ae1)
-#   - consumption per adult equivalent — scale 2 (conso_ae2)
+# OBJECTIF :
+# Analyse de sensibilite de l'incidence de la TVA aux classements alternatifs de bien-etre.
+# Le classement de base utilise la consommation totale du menage. Ici, nous testons aussi :
+#   - consommation par habitant (conso_pc)
+#   - consommation par adulte equivalent — echelle FAO 1 (conso_ae1)
+#   - consommation par adulte equivalent — echelle 2 (conso_ae2)
 #
-# OUTPUT:
-#   - Effective VAT rates by decile under each ranking × scenario combination
-#   - CEQ summary indices (Gini, CI, Kakwani, RS) per ranking × scenario
+# SORTIE :
+#   - Taux de TVA effectif par decile sous chaque combinaison classement × scenario
+#   - Indices resumes CEQ (Gini, CI, Kakwani, RS) par classement × scenario
 #
-# INPUT:  SILVER/06/fiscal_sensitivity_taxation.parquet
-#         DATA/ehcvm_welfare_2b_CIV2021.dta
-# OUTPUT: TABLES/06/06_02_*.xlsx
-#         SILVER/06/06_02_ceq_rankings.parquet
+# ENTREE :  SILVER/06/fiscal_sensitivity_taxation.parquet
+#           DATA/ehcvm_welfare_2b_CIV2021.dta
+# SORTIE :  TABLES/06/06_02_*.xlsx
+#           SILVER/06/06_02_ceq_rankings.parquet
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : Armand Kouakou Djaha, MSc (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_sensitivity_ranking <- function(paths) {
 
-  message(">>> STEP 6.2: Sensitivity analysis — welfare rankings")
+  message(">>> ETAPE 6.2 : Analyse de sensibilite — classements de bien-etre")
 
   hh_sens <- load_parquet(
     file.path(paths$SILVER, "06", "fiscal_sensitivity_taxation.parquet")
   )
 
-  # ── Merge welfare variables ───────────────────────────────────────────────
+# ── Fusionner les variables de bien-etre ─────────────────────────────────
   welfare_data <- load_raw_dta(
     "ehcvm_welfare_2b_CIV2021.dta",
     col_select = c("hhid", "eqadu1", "eqadu2", "hgender", "hage",
                    "hmstat", "heduc", "halfa2", "halfa", "hbranch",
                    "pcexp", "zref", "hhsize")
   )
+  assert_required_columns(
+    welfare_data,
+    c("hhid", "eqadu1", "eqadu2", "pcexp", "zref", "hhsize"),
+    object_name = "ehcvm_welfare_2b_CIV2021.dta"
+  )
 
   hh <- hh_sens %>%
     dplyr::left_join(welfare_data, by = "hhid")
 
-  # ── Welfare concepts ──────────────────────────────────────────────────────
+  # ── Concepts de bien-etre ───────────────────────────────────────────────
   hh <- hh %>%
     dplyr::mutate(
       conso_pc  = conso_w / hhsize,
@@ -46,7 +51,7 @@ run_sensitivity_ranking <- function(paths) {
       conso_ae2 = conso_w / eqadu2
     )
 
-  # ── Decile rankings ───────────────────────────────────────────────────────
+  # ── Classements par decile ───────────────────────────────────────────────
   hh <- hh %>%
     dplyr::mutate(
       decile_total = weighted_ntile(conso_w,   hhweight, n = 10),
@@ -55,7 +60,7 @@ run_sensitivity_ranking <- function(paths) {
       decile_ae2   = weighted_ntile(conso_ae2, hhweight, n = 10)
     )
 
-  # ── Effective VAT by ranking × scenario ───────────────────────────────────
+  # ── TVA effectif par classement × scenario ─────────────────────────────
   for (rank in c("total", "pc", "ae1", "ae2")) {
     dcol <- paste0("decile_", rank)
     out  <- hh %>%
@@ -72,8 +77,8 @@ run_sensitivity_ranking <- function(paths) {
                            paste0("06_02_eff_vat_", rank, ".xlsx")))
   }
 
-  # ── CEQ summary per ranking × scenario ────────────────────────────────────
-  # For each ranking, VAT burden is scaled to per-unit welfare concept
+  # ── Resume CEQ par classement × scenario ────────────────────────────────
+  # Pour chaque classement, la charge TVA est mise a l'echelle par unite de bien-etre
   rankings <- list(
     total = list(welfare = "conso_w",   divisor = NA),
     pc    = list(welfare = "conso_pc",  divisor = "hhsize"),
@@ -111,7 +116,7 @@ run_sensitivity_ranking <- function(paths) {
     })
   })
 
-  message("\n  CEQ summary by ranking and scenario:")
+  message("\n  Resume CEQ par classement et scenario :")
   print(ceq_rankings)
 
   save_parquet(ceq_rankings,

@@ -1,58 +1,56 @@
 ********************************************************************************
 * 02_mapping_tax_clean.do
 *
-* OBJECTIVE:
-* Build a clean and auditable VAT mapping by product code (codpr),
-* starting from:
-*   (1) an official Excel mapping imported from the CGI 2026 VAT table
+* OBJECTIF :
+* Construire un mapping TVA propre et auditable par code produit (codpr),
+* a partir de :
+*   (1) un mapping Excel officiel importe du tableau TVA CGI 2026
 *
-* FINAL OUTPUT:
-* A final product-level VAT mapping file ready to merge with consumption data.
+* SORTIE FINALE :
+* Un fichier final de mapping TVA au niveau produit pret a etre fusionne avec les donnees de consommation.
 *
-* CORE PRINCIPLES:
-* - codpr and "produit" is the merge keys
+* PRINCIPES FONDAMENTAUX :
+* - codpr et "produit" sont les cles de fusion
 *
-* ECONOMIC INTERPRETATION:
-* - r_vat_official: final VAT rate used in analysis
-* - hors_champ: product outside VAT scope in the original official mapping
+* INTERPRETATION ECONOMIQUE :
+* - r_vat_official : taux TVA final utilise dans l'analyse
+* - hors_champ : produit hors champ TVA dans le mapping officiel original
 *
-* NOTES:
-* - VAT rates are stored as proportions: 0, 0.09, 0.18
-* - manual VAT entered in Excel is assumed to be in percentage points: 0, 9, 18
-*AUTHOR: Armand Kouakou Djaha, MSc
-********************************************************************************
+* NOTES :
+* - Les taux TVA sont stockes en proportions : 0, 0,09, 0,18
+* - La TVA manuelleentee dans Excel est supposee être en points de pourcentage : 0, 9, 18
+ ********************************************************************************
 
 clear all
 set more off
 
-********************************************************************************
-* STEP 1 — Import official Excel VAT mapping
-********************************************************************************
-* Expected Excel file contains at least:
-*  code, produit,mode d'acquisition, ...
+ ********************************************************************************
+* ETAPE 1 — Importer le mapping Excel TVA officiel
+ ********************************************************************************
+* Le fichier Excel attendu contient au moins :
+*  code, produit, mode d'acquisition, ...
 
 
 import excel "$DATA\COPR_EHCVM_TVA_renseigne.xlsx", sheet("TVA_detail") firstrow clear
 
-********************************************************************************
-* STEP 2 — Handle "Hors champ"
-********************************************************************************
-* "Hors champ" means outside the VAT scope.
-* We preserve this information with an indicator, but set the raw rate to 0
-* so it can be converted numerically.
+ ********************************************************************************
+* ETAPE 2 — Gerer le "Hors champ"
+ ********************************************************************************
+* "Hors champ" signifie hors du champ TVA.
+* On preserve cette information avec un indicateur, mais on definit le taux brut a 0
+*以便可以转换为数字形式。
 
 gen hors_champ = (trim(TVA_statutaire) == "Hors champ")
 
 replace hors_champ = 1 if mode != "Achat"
 replace TVA_statutaire = "9999" if trim(TVA_statutaire) == "Hors champ"
 
-********************************************************************************
-* STEP 3 — Clean raw VAT rate string
-********************************************************************************
-* Remove %, *, spaces, then convert to numeric.
+ ********************************************************************************
+* ETAPE 3 — Nettoyer la chaine de taux TVA brute
+ ********************************************************************************
+* Supprimer %, *, espaces, puis convertir en numerique.
 
-
-* Remove %, *, spaces, then convert to numeric.
+* Supprimer %, *, espaces, puis convertir en numerique.
 
 replace TVA_statutaire = subinstr(TVA_statutaire, "%", "", .)
 replace TVA_statutaire = subinstr(TVA_statutaire, "*", "", .)
@@ -60,51 +58,51 @@ replace TVA_statutaire = trim(TVA_statutaire)
 
 destring TVA_statutaire, replace force
 ta TVA_statutaire
-* Convert from percent to proportion
+* Convertir du pourcentage a la proportion
 gen r_vat_official = TVA_statutaire / 100
 
 drop TVA_statutaire
 
-********************************************************************************
-* STEP 4 — Validate imported official VAT rates
-********************************************************************************
+ ********************************************************************************
+* ETAPE 4 — Valider les taux TVA officiels importes
+ ********************************************************************************
 
-di as text ">>> Summary of official VAT rates"
+di as text ">>> Resume des taux TVA officiels"
 sum r_vat_official
 
-di as text ">>> Distribution of official VAT rates"
+di as text ">>> Distribution des taux TVA officiels"
 tab r_vat_official
 
-di as text ">>> Distribution of hors_champ indicator"
+di as text ">>> Distribution de l'indicateur hors_champ"
 tab hors_champ
 
 
-********************************************************************************
-* STEP 5 — Check uniqueness of codpr in official mapping
-********************************************************************************
-* Each codpr should map to one unique official VAT profile.
+ ********************************************************************************
+* ETAPE 5 — Verifier l'unicite de codpr dans le mapping officiel
+ ********************************************************************************
+* Chaque codpr doit correspondre a un profil TVA officiel unique.
 
 duplicates report code produit
 
-********************************************************************************
-* STEP 6 — Keep only relevant variables from official mapping
-********************************************************************************
+ ********************************************************************************
+* ETAPE 6 — Garder uniquement les variables pertinentes du mapping officiel
+ ********************************************************************************
 
 keep code produit hors_champ r_vat_official
 
-* Add explicit source
+* Ajouter la source explicite
 gen source = "official"
 
 sort code produit
 save "$SILVER/02/mapping_fiscal_official.dta", replace
 
-di as result ">>> Official VAT mapping cleaned and saved"
+di as result ">>> Mapping TVA officiel nettoy et sauvegarde"
 
 
-********************************************************************************
-* STEP 7 — Merge final mapping into consumption data
-********************************************************************************
-* This is the final operational merge used for incidence analysis.
+ ********************************************************************************
+* ETAPE 7 — Fusionner le mapping final dans les donnees de consommation
+ ********************************************************************************
+* C'est la fusion operationnelle finale utilisee pour l'analyse d'incidence.
 
 use "$SILVER/01/conso_clean.dta", clear
 gen code = codpr
@@ -114,113 +112,112 @@ order code produit
 sort code produit
 merge m:1  code produit using "$SILVER/02/mapping_fiscal_official.dta"
 
-di as text ">>> Final merge results"
+di as text ">>> Resultats de la fusion finale"
 tab _merge
 
-tab hors_champ if _merge==2 // Therefore, those who did not find a match are the ones who are out of scope.
+tab hors_champ if _merge==2 // Par consequent, ceux qui n'ont pas trouve de correspondance sont hors champ.
 
-* Strong expectation:
-* - _merge==1 should be 0
-* - _merge==3 should cover all consumption observations
-* - _merge==2 can exist and is harmless for final analysis
+* Forte expectation :
+* - _merge==1 devrait etre 0
+* - _merge==3 devrait couvrir toutes les observations de consommation
+* - _merge==2 peut exister et est sans danger pour l'analyse finale
 
 
-********************************************************************************
-* STEP 8 — Diagnostics after merge
-********************************************************************************
+ ********************************************************************************
+* ETAPE 8 — Diagnostics apres fusion
+ ********************************************************************************
 
-* Products in consumption still missing from mapping (should be zero)
+* Produits dans la consommation encore manquants du mapping (devrait etre nul)
 count if _merge == 1
 br code r_vat_official produit if _merge == 1
 
-* Products in mapping not observed in conso (not a problem)
+* Produits dans le mapping non observes dans conso (pas un probleme)
 count if _merge == 2
 br code r_vat_official produit if _merge == 2
 
 list code produit if _merge == 2
 
 
-********************************************************************************
-* STEP 9 — keep only relevant observations for analysis
-********************************************************************************
+ ********************************************************************************
+* ETAPE 9 — Garder uniquement les observations pertinentes pour l'analyse
+ ********************************************************************************
 keep if _merge == 3
 drop _merge
 keep if  hors_champ ==0
 
-********************************************************************************
-* STEP 10 — LABELING DATASET
-********************************************************************************
+ ********************************************************************************
+* ETAPE 10 — ETIQUETAGE DU JEU DE DONNEES
+ ********************************************************************************
 
 *-------------------------------
-* 1. LABEL VARIABLES 
+* 1. ETIQUETER LES VARIABLES 
 *-------------------------------
 
-label variable country        "Country code"
-label variable year           "Survey year"
-label variable hhid           "Household unique identifier"
-label variable vague          "Survey wave"
-label variable grappe         "Sampling cluster"
-label variable menage         "Household number within cluster"
+label variable country        "Code pays"
+label variable year           "Annee d'enquete"
+label variable hhid           "Identifiant unique du menage"
+label variable vague          "Vague d'enquete"
+label variable grappe         "Grappe d'echantillonnage"
+label variable menage         "Numero du menage dans la grappe"
 
-label variable region         "Region of residence"
-label variable milieu         "Area of residence (urban/rural)"
+label variable region         "Region de residence"
+label variable milieu         "Zone de residence (urbain/rural)"
 
-label variable hhweight       "Household sampling weight"
+label variable hhweight       "Ponderation d'echantillonnage du menage"
 
-label variable code          "Product code (EHCVM nomenclature)"
-label variable produit        "Product / Service label"
+label variable code          "Code produit (nomenclature EHCVM)"
+label variable produit        "Libelle produit / service"
 
-label variable inclus         "Included in final consumption aggregate"
-label variable coicop         "COICOP classification"
-label variable modep          "Mode of acquisition"
+label variable inclus         "Inclus dans l'aggregat de consommation finale"
+label variable coicop         "Classification COICOP"
+label variable modep          "Mode d'acquisition"
 
-label variable depan          "Annual consumption expenditure (CFA)"
-label variable log_depan      "Log of annual consumption expenditure"
-label variable depan_w        "Winsorized consumption expenditure"
+label variable depan          "Depense annuelle de consommation (CFA)"
+label variable log_depan      "Log de la depense annuelle de consommation"
+label variable depan_w        "Depense de consommation winsorisee"
 
-* VAT / fiscal variables
-label variable hors_champ     "Out of VAT scope (1=yes, 0=no)"
-label variable r_vat_official "Official VAT rate (CGI 2026)"
-label variable source         "Source of VAT assignment (official)"
+* Variables TVA / fiscales
+label variable hors_champ     "Hors champ TVA (1=oui, 0=non)"
+label variable r_vat_official "Taux TVA officiel (CGI 2026)"
+label variable source         "Source de l'assignation TVA (officiel)"
 
 *-------------------------------
-* 1. LABEL VALUES 
+* 1. ETIQUETER LES VALEURS 
 *-------------------------------
 * Inclus
-label define inclus_lbl 0 "No" 1 "Yes"
+label define inclus_lbl 0 "Non" 1 "Oui"
 label values inclus inclus_lbl
 
 
-/*
-* final VAT
+ /*
+ * TVA final
 gen vat_cat = round(r_vat_final*100)
 
 replace vat_cat = 0  if vat_cat==0
 replace vat_cat = 9  if vat_cat==9
 replace vat_cat = 18 if vat_cat==18
 
-label define vat_cat_lbl 0 "Exempt (0%)" 1"Reduced(9%)" 2"Standard (18%)"
+label define vat_cat_lbl 0 "Exonere (0%)" 1"Reduit(9%)" 2"Standard (18%)"
 
 label values vat_cat vat_cat_lbl
-label variable vat_cat "VAT category"
-*/
+label variable vat_cat "Categorie TVA"
+ */
 
 
-*format r_vat_official %9.2f
-*format depan %15.0fc
-*format depan_w %15.0fc
+ *format r_vat_official %9.2f
+ *format depan %15.0fc
+ *format depan_w %15.0fc
 
 
-********************************************************************************
-* STEP 11 — Saving
-********************************************************************************
+ ********************************************************************************
+* ETAPE 11 — Sauvegarde
+ ********************************************************************************
 
 
 save "$SILVER/01/conso_clean", replace
-di as result ">>> Dataset labeled and ready for analysis"
+di as result ">>> Jeu de donnees etiquete et pret pour l'analyse"
 
 
-********************************************************************************
-* END
-********************************************************************************
-
+ ********************************************************************************
+* FIN
+ ********************************************************************************

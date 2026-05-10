@@ -1,23 +1,23 @@
 # 11_reform_figures.R
 #
-# OBJECTIVE:
-# Produce all figures for the poultry input VAT reform simulation.
+# OBJECTIF :
+# Produire toutes les figures pour la simulation de la reforme TVA sur les intrants avicoles.
 #
-# FIGURES:
-# Fig R1 — Budget share of poultry by decile (bar)
-#           → who consumes chicken as % of budget?
-# Fig R2 — Change in effective VAT rate by decile: 3 scenarios (line)
-#           → core distributional figure; downward slope = regressive
-# Fig R3 — Effective VAT rate before vs after reform — S2 central (line)
-#           → magnitude of the shift by decile
-# Fig R4 — Share of additional fiscal burden by decile — S2 (bar)
-#           → who pays the new revenue? left-heavy = regressive
+# FIGURES :
+# Fig R1 — Part budgetaire du poulet par decile (barres)
+#           → qui consomme du poulet en % du budget ?
+# Fig R2 — Variation du taux TVA effectif par decile : 3 scenarios (lignes)
+#           → figure distributionnelle principale ; pente descendante = regressif
+# Fig R3 — Taux TVA effectif avant vs apres reforme — S2 central (lignes)
+#           → ampleur du deplacement par decile
+# Fig R4 — Part de la charge fiscale additionnelle par decile — S2 (barres)
+#           → qui paie la nouvelle recette ? gauche-lourde = regressif
 #
-# INPUT:  SILVER/06/reform_chicken_inputs.parquet  (decile-level)
-# OUTPUT: FIGS/figR1_*.png ... FIGS/figR4_*.png
+# ENTREE :  SILVER/06/reform_chicken_inputs.parquet  (niveau decile)
+# SORTIE :  FIG8/figR1_*.png ... FIG8/figR4_*.png
 #
-# AUTHOR: CAE — ANStat (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : CAE — ANStat (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_reform_figures <- function(paths) {
 

@@ -43,6 +43,11 @@ run_poverty_incidence <- function(paths) {
     "ehcvm_welfare_2b_CIV2021.dta",
     col_select = c("hhid", "pcexp", "zref", "hhsize")
   )
+  assert_required_columns(
+    welfare,
+    c("hhid", "pcexp", "zref", "hhsize"),
+    object_name = "ehcvm_welfare_2b_CIV2021.dta"
+  )
 
   hh <- hh_vat %>%
     dplyr::left_join(welfare, by = "hhid") %>%

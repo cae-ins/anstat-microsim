@@ -18,31 +18,31 @@ set more off
 set varabbrev off
 
 * Vérification robuste
-capture confirm file "04_scripts/00_master.do"
+cap confirm file "04_scripts/00_master.do"
 
 if _rc != 0 {
-    di as error "--- wrong work folder"
-    di as error "--- Run Stata from the project's root folder"
+    di as error "--- dossier de travail incorrect"
+    di as error "--- Executer Stata depuis le dossier racine du projet"
     exit 198
 }
 
-* folder
+* Dossier
 global ROOT = c(pwd)
 
 * ── Sources ─────────────────────────────────────────────────────────────────
 global DATA    "$ROOT/01_data_sources/Dataout"
 global CODE    "$ROOT/04_scripts"
 
-* ── Medallion layers ─────────────────────────────────────────────────────────
-global SILVER  "$ROOT/02_data_intermediate"   // cleaned intermediate datasets
-global GOLD    "$ROOT/03_data_output"          // final analytic datasets
+* ── Couches Medallion ────────────────────────────────────────────────────
+global SILVER  "$ROOT/02_data_intermediate"   // jeux de donnees nettoyés intermediaires
+global GOLD    "$ROOT/03_data_output"          // jeux de donnees analytiques finaux
 
-* ── Reports ──────────────────────────────────────────────────────────────────
+* ── Rapports ──────────────────────────────────────────────────────────────────
 global LOGS    "$ROOT/06_logs"
 global TABLES  "$ROOT/07_reports/tables"
 global FIGS    "$ROOT/07_reports/figures"
 
-* ── Create folders if missing ────────────────────────────────────────────────
+* ── Creer les dossiers si absents ────────────────────────────────────────
 cap mkdir "$SILVER"
 cap mkdir "$SILVER/01"
 cap mkdir "$SILVER/02"

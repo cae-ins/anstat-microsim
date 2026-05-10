@@ -1,102 +1,101 @@
 ********************************************************************************
 * 01_prepare_data.do
 *
-* OBJECTIVE:
-* Construct a clean, consistent, and economically meaningful expenditure dataset
-* for VAT incidence analysis based on EHCVM (Harmonised Survey on Household
-* Living Conditions) data.
+* OBJECTIF :
+* Construire un jeu de donnees de depenses propre, coherent et economiquement
+* significatif pour l'analyse de l'incidence de la TVA base sur les donnees
+* EHCVM (Enquete Harmonisee sur les Conditions de Vie des Menages).
 *
-* DATA STRUCTURE:
-* - Unit of observation: household × product × acquisition method
-* - Approximately 60 observations per household
-* - Around 422 distinct consumption items
+* STRUCTURE DES DONNEES :
+* - Unite d'observation : menage × produit × mode d'acquisition
+* - Environ 60 observations par menage
+* - Environ 422 items de consommation distincts
 *
-* KEY VARIABLES:
-* - depan   : annual expenditure per item
-* - modep   : mode of acquisition (purchase, own-consumption, gift, imputation)
-* - inclus  : indicator for inclusion in the official final consumption aggregate
-* - hhid    : household identifier
+* VARIABLES CLES :
+* - depan   : depense annuelle par item
+* - modep   : mode d'acquisition (achat, autoconsommation, don, imputation)
+* - inclus  : indicateur d'inclusion dans l'aggregat officiel de consommation finale
+* - hhid    : identificateur du menage
 *
-* METHODOLOGICAL APPROACH:
+* APPROCHE METHODOLOGIQUE :
 *
-* 1. Data validation and cleaning
-*    - Inspect the distribution of expenditures
-*    - Identify invalid or implausible values
+* 1. Validation et nettoyage des donnees
+*    - Inspecter la distribution des depenses
+*    - Identifier les valeurs invalides ou non plausibles
 *
-* 2. Distinguish official consumption from VAT-relevant expenditure :
-*    - The official final consumption aggregate includes both monetary and
-*      non-monetary components, such as self-consumption and in-kind transfers.
-*    - However, VAT applies only to market transactions.
-*    - Therefore, VAT incidence analysis must distinguish:
-*         (i) official household final consumption (through variable "inclus"),
-*        (ii) market-based expenditure,
+* 2. Distinguer la consommation officielle de la depense relevante pour la TVA :
+*    - L'aggregat officiel de consommation finale inclut les composantes
+*      monetaires et non monetaires (autoconsommation, transferts en nature).
+*    - Cependant, la TVA s'applique uniquement aux transactions marchandes.
+*    - Par consequent, l'analyse de l'incidence de la TVA doit distinguer :
+*         (i) la consommation finale officielle des menages (via la variable "inclus"),
+*        (ii) la depense basee sur le marche,
 *
-* 3. Restriction to market-based transactions
-*    - Keep market acquisitions only (modep == 1) in order to approximate
-*      the effective tax base observed in household expenditure data.
-*    - Non-monetary components are excluded from the VAT base, including:
-*         • own-consumption
-*         • gifts received in kind
-*         • imputed values (e.g. imputed rent, use value of durables)
+* 3. Restriction aux transactions marchandes
+*    - Garder uniquement les acquisitions sur le marche (modep == 1) afin d'approximer
+*      la base d'imposition effective observee dans les donnees de depense des menages.
+*    - Les composantes non monetaires sont exclues de la base TVA, incluant :
+*         • autoconsommation
+*         • recus en nature
+*         • valeurs imputedes (loyer imputed, valeur d'usage des biens durables)
 *
-* 4. Treatment of extreme values
-*    - Apply winsorization at the 99th percentile (depan_w)
-*    - Preserve both raw and winsorized versions for robustness analysis
+* 4. Traitement des valeurs extremes
+*    - Appliquer la winsorisation au 99e percentile (depan_w)
+*    - Conserver les versions brutes et winsorisees pour l'analyse de robustesse
 *
-* 5. Construction of household-level aggregates
-*    - Aggregate expenditures from item-level to household-level
-*    - Compute:
-*         • total expenditure (conso)
-*         • total winsorized expenditure (conso_w)
-*         • number of items (n_items)
+* 5. Construction des agrégats au niveau menage
+*    - Agreger les depenses du niveau item au niveau menage
+*    - Calculer :
+*         • depense totale (conso)
+*         • depense totale winsorisee (conso_w)
+*         • nombre d'items (n_items)
 *
-* 6. Final dataset
-*    - One observation per household
-*    - Includes expenditure aggregates and household characteristics
-*    - Log-transformed variables generated for diagnostic and analytical purposes
+* 6. Jeu de donnees final
+*    - Une observation par menage
+*    - Inclut les agrégats de depenses et les caracteristiques du menage
+*    - Variables transformées en log generées a des fins de diagnostic et d'analyse
 *
-* CEQ FRAMEWORK INTERPRETATION:
+* INTERPRETATION DU CADRE CEQ :
 *
-* - We move from:
-*       observed household expenditure
-*   to:
-*       market-based expenditure relevant for indirect tax incidence
+* - On passe de :
+*       depense observee des menages
+*   a :
+*       depense basee sur le marche relevante pour l'incidence des taxes indirectes
 *
-* - The final taxable base is not defined solely by survey accounting rules,
-*   but by the combination of:
-*       • observed expenditure,
-*       • method acquisition,
-*       • product-level fiscal classification.
+* - La base d'imposition finale n'est pas definie uniquement par les regles
+*   comptables de l'enquete, mais par la combinaison de :
+*       • depense observee,
+*       • mode d'acquisition,
+*       • classification fiscale au niveau du produit.
 *
-* - The final dataset is consistent with a partial CEQ framework focusing on
-*   indirect taxation (VAT incidence).
-*AUTHOR: Armand Kouakou Djaha, MSc
-********************************************************************************
+* - Le jeu de donnees final est coherent avec un cadre CEQ partiel focalise sur
+*   la taxation indirecte (incidence TVA).
+ ********************************************************************************
 set scheme s1color
 
-di as text ">>> STEP 1: Loading raw consumption data"
+di as text ">>> ETAPE 1 : Chargement des donnees de consommation brutes"
 use "$DATA/ehcvm_conso_civ2021.dta", clear
 
-********************************************************************************
-* STEP 1 — Inspect dataset structure
-********************************************************************************
+ ********************************************************************************
+* ETAPE 1 — Inspecter la structure du jeu de donnees
+ ********************************************************************************
 
-di as text ">>> Inspecting dataset structure"
+di as text ">>> Inspection de la structure du jeu de donnees"
 
 describe
 count
 
-* Key identifiers must be present
+* Les identifiants cles doivent etre presents
 assert !missing(hhid)
 assert !missing(codpr)
 
-********************************************************************************
-* STEP 2 — Clean expenditure values
-********************************************************************************
+ ********************************************************************************
+* ETAPE 2 — Nettoyer les valeurs de depenses
+ ********************************************************************************
 
-di as text ">>> Cleaning expenditure values (depan)"
+di as text ">>> Nettoyage des valeurs de depenses (depan)"
 
-* Inspect distribution (important for detecting outliers)
+* Inspecter la distribution (important pour detecter les valeurs aberrantes)
 sum depan, detail
 tabstat depan, ///
     stat(n mean sd p1 p5 p10 p25 p50 p75 p90 p95 p99 min max skewness kurtosis) ///
@@ -130,105 +129,108 @@ export excel using "$TABLES/01/summary_depan_raw.xlsx", ///
 restore
 list if depan >= 25000000
 
-********************************************************************************
-* STEP 3 — Official consumption aggregate
-********************************************************************************
+ ********************************************************************************
+* ETAPE 3 — Agregat de consommation officiel
+ ********************************************************************************
 
-di as text ">>> Diagnosing official consumption aggregate (SCN concept)"
+di as text ">>> Diagnostic de l'aggregat de consommation officiel (concept SCN)"
 
-* Variable 'inclus':
-* =1 → included in official consumption aggregate (SCN concept)
-* =0 → excluded (investment, special cases, classification issues)
+* Variable 'inclus' :
+* =1 → inclut dans l'aggregat officiel de consommation (concept SCN)
+* =0 → exclu (investissement, cas speciaux, problemes de classification)
 
 tab inclus
 sum depan if inclus == 1
 sum depan if inclus == 0
 
-* IMPORTANT:
-* The variable 'inclus' follows national accounts logic (welfare measurement),
-* but does not perfectly match the VAT tax base.
+* IMPORTANT :
+* La variable 'inclus' suit la logique des comptes nationaux (mesure du bien-etre),
+* mais ne correspond pas parfaitement a la base d'imposition TVA.
 *
-* Some excluded items (inclus == 0) may still correspond to taxable market
-* transactions (e.g. durable goods, equipment, electronics).
+* Certains items exclus (inclus == 0) peuvent toujours correspondre a des transactions
+* marchandes imposables (ex. biens durables, equipements, electronique).
 *
-* Therefore:
-*  we do NOT drop inclus == 0 
+* Par consequent :
+*  on NE supprime PAS inclus == 0
 
-********************************************************************************
+ ********************************************************************************
 
-********************************************************************************
-* STEP 4 — Restrict to market-based consumption (VAT-relevant base)
-********************************************************************************
 
-di as text ">>> Restricting to market-based consumption (VAT-relevant)"
+ ********************************************************************************
+* ETAPE 4 — Restriction a la consommation basee sur le marche (base relevante TVA)
+ ********************************************************************************
 
-* Variable 'modep':
-* 1 = Purchase (market transaction)
-* 2 = Own-consumption
-* 3 = Gift
-* 4 = Use value (durables)
-* 5 = Imputed rent
+di as text ">>> Restriction a la consommation basee sur le marche (base relevante TVA)"
+
+* Variable 'modep' :
+* 1 = Achat (transaction marchande)
+* 2 = Autoconsommation
+* 3 = Don
+* 4 = Valeur d'usage (biens durables)
+* 5 = Loyer impute
 
 tab modep
 
-* CEQ assumption:
-* VAT applies only to market transactions
+* Hypothese CEQ :
+* La TVA s'applique uniquement aux transactions marchandes
 
 keep if modep == 1
 
 sum depan, detail
 
-* IMPORTANT:
-* This restriction defines the core VAT-relevant base:
+* IMPORTANT :
+* Cette restriction definit la base fondamentale relevante pour la TVA :
 *
-* Included:
-* - monetary purchases of goods and services
+* Inclus :
+* - achats monetaires de biens et services
 *
-* Excluded:
-* - own-consumption (no market transaction)
-* - gifts and transfers in kind
-* - imputed rent
-* - use value of durables (non-observed transactions)
+* Exclus :
+* - autoconsommation (pas de transaction marchande)
+* - dons et transferts en nature
+* - loyer impute
+* - valeur d'usage des biens durables (transactions non observees)
 *
-* NOTE:
-* Some remaining items may still be:
-* - non-taxable (exempt)
-* - out of scope (not subject to VAT)
+* NOTE :
+* Certains items restants peuvent toujours etre :
+* - non imposables (exoneres)
+* - hors champ (non soumis a la TVA)
 *
-* These will be handled later through VAT mapping (product-level classification)
-********************************************************************************
+* Ces points seront trait later via le mapping TVA (classification au niveau du produit)
+ ********************************************************************************
 
 
-********************************************************************************
-* STEP 5 — Diagnostics after filtering
-********************************************************************************
+ ********************************************************************************
+* ETAPE 5 — Diagnostics apres filtrage
+ ********************************************************************************
 
-di as text ">>> Diagnostics after filtering"
+di as text ">>> Diagnostics apres filtrage"
 
 count
 sum depan, detail
 
-/*The distribution of spending is highly unequal and dominated by a few high values. A "typical" household spends approximately 15,000 FCFA (median) per item (annualized).
-Skewness = 57.19 & Kurtosis = 12818.75 extremely asymmetrical distribution with a high concentration of low observations and some extremely high values.
+/*La distribution des depenses est tres inegale et dominee par quelques valeurs elevees.
+Un menage "typique" depense environ 15 000 FCFA (mediane) par item (annualise).
+Asymetrie = 57,19 & Kurtosis = 12 818,75 distribution extremement asymetrique avec une forte concentration de faibles observations et quelques valeurs extremement elevees.
 
-Conclusion : The majority of households consume little, while a minority make very high expenditures, reflecting both inequalities in living standards and the presence of significant one-off expenditures.
+Conclusion : La majorite des menages consomment peu, tandis qu'une minorite depense beaucoup,
+refletant a la fois les inegalites de niveau de vie et la presence de depenses ponctuelles significatives.
 */
 
-* Check COICOP distribution
+* Verifier la distribution COICOP
 tab coicop
 
-* Check regional structure
+* Verifier la structure regionale
 tab region
 
-********************************************************************************
-* STEP 6 — Handle extreme values (robustness)
-********************************************************************************
+ ********************************************************************************
+* ETAPE 6 — Gerer les valeurs extremes (robustesse)
+ ********************************************************************************
 
-di as text ">>> Handling extreme values"
+di as text ">>> Gestion des valeurs extremes"
 
-* Motivation:
-* Expenditure distribution is highly skewed (heavy tail),
-* which may bias incidence results
+* Motivation :
+* La distribution des depenses est tres asymetrique (forte queue),
+* ce qui peut biaiser les resultats d'incidence
 
 gen log_depan = log(depan)
 histogram depan
@@ -236,8 +238,8 @@ histogram log_depan
 graph save "$FIGS/log_depan_af_cleaning.gph" , replace
 graph export "$FIGS/log_depan_af_cleaning.png", replace
 
-/*The distribution of household expenditures exhibits a log-normal pattern,
-consistent with standard findings in the consumption literature.
+/*La distribution des depenses des menages suit un pattern log-normal,
+coherent avec les resultats standards de la litterature sur la consommation.
 */
 
 sum depan, detail
@@ -245,26 +247,26 @@ local p99 = r(p99)
 
 gen depan_w = depan
 
-* Winsorize at the 99th percentile
+* Winsoriser au 99e percentile
 replace depan_w = `p99' if depan > `p99'
 
-* NOTE:
-* - 'depan'  = raw values
-* - 'depan_w' = robust version
+* NOTE :
+* - 'depan'  = valeurs brutes
+* - 'depan_w' = version robuste
 
 sum depan_w, detail
 histogram depan_w
 
 
-********************************************************************************
-* STEP 7 — Save cleaned detailed dataset
-********************************************************************************
+ ********************************************************************************
+* ETAPE 7 — Sauvegarder le jeu de donnees nettoy detaille
+ ********************************************************************************
 
-di as text ">>> Saving cleaned consumption dataset"
+di as text ">>> Sauvegarde du jeu de donnees de consommation nettoy"
 
 save "$SILVER/01/conso_clean.dta", replace
 
 
-********************************************************************************
-* END
-********************************************************************************
+ ********************************************************************************
+* FIN
+ ********************************************************************************

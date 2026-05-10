@@ -1,68 +1,68 @@
 # 06_01_sensitivity_taxation.R
 #
-# OBJECTIVE:
-# Sensitivity analysis of VAT incidence to alternative effective pass-through
-# assumptions, grounded in the Informality Engel Curve (IEC) framework of
+# OBJECTIF :
+# Analyse de sensibilite de l'incidence de la TVA aux hypothese alternatives de pass-through effectif,
+# fondées sur le cadre de la courbe d'Engel de l'informalite (IEC) de
 # Bachas, Gadenne & Jensen (2024, RestUD 91(5)).
 #
-# THREE SCENARIOS:
-# - Strict  (alpha=1): full pass-through, theoretical upper bound
-# - S2 (CEI × milieu): alpha differentiated by COICOP × urban/rural
-# - S3 (CEI × decile): alpha linear in decile rank, by COICOP (IEC calibrated)
+# TROIS SCENARIOS :
+# - Strict  (alpha=1) : pass-through complet, borne superieure theorique
+# - S2 (CEI × milieu) : alpha difféencié par COICOP × urbain/rural
+# - S3 (CEI × decile) : alpha lineaire selon le rang du decile, par COICOP (IEC calibree)
 #
-# OUTPUTS:
-# - household-level VAT under each scenario
-# - effective VAT rates by decile
-# - CEQ summary indices (Gini, CI, Kakwani, RS) per scenario
-# - Bootstrap confidence intervals on Kakwani (500 reps)
+# SORTIES :
+# - TVA au niveau menage pour chaque scenario
+# - Taux de TVA effectif par decile
+# - Indices resumés CEQ (Gini, CI, Kakwani, RS) par scenario
+# - Intervalles de confiance bootstrap sur Kakwani (500 réplications)
 #
-# INPUT:  SILVER/01/conso_clean.parquet   (item-level)
-# OUTPUT: SILVER/06/fiscal_sensitivity_taxation.parquet
-#         TABLES/06/06_01_*.xlsx
+# ENTREE :  SILVER/01/conso_clean.parquet   (niveau article)
+# SORTIE :  SILVER/06/fiscal_sensitivity_taxation.parquet
+#           TABLES/06/06_01_*.xlsx
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : Armand Kouakou Djaha, MSc (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_sensitivity_taxation <- function(paths) {
 
-  message(">>> STEP 6.1: Sensitivity analysis — taxation scenarios")
+  message(">>> ETAPE 6.1 : Analyse de sensibilite — scenarios de taxation")
 
   df <- load_parquet(file.path(paths$SILVER, "01", "conso_clean.parquet"))
 
-  # ── Validation ────────────────────────────────────────────────────────────
+  # ── Validation ───────────────────────────────────────────────────────────
   stopifnot(
     !anyNA(df$hhid), !anyNA(df$hhweight),
     !anyNA(df$depan_w), !anyNA(df$r_vat_official),
     !anyNA(df$coicop), !anyNA(df$milieu)
   )
 
-  # Ensure coicop is numeric for join
+  # S'assurer que coicop est numerique pour la jointure
   df <- df %>%
     dplyr::mutate(coicop_num = as.integer(as.character(coicop)))
 
-  # ── SCENARIO 1: Strict (alpha = 1) ───────────────────────────────────────
+  # ── SCENARIO 1 : Strict (alpha = 1) ──────────────────────────────────────
   df <- df %>%
     dplyr::mutate(vat_item_strict = depan_w * r_vat_official)
 
-  # ── SCENARIO 2: CEI × milieu urbain/rural ────────────────────────────────
-  # Source: Bachas et al. (2024) + World Bank WPS 10703 (2024)
+  # ── SCENARIO 2 : CEI × milieu urbain/rural ──────────────────────────────
+  # Source : Bachas et al. (2024) + World Bank WPS 10703 (2024)
   alpha2_tbl <- tibble::tribble(
     ~coicop_num, ~alpha_rural, ~alpha_urban,
-    1L,  0.18, 0.42,   # food/bev       : most informal, strong milieu gap
-    2L,  0.55, 0.72,   # alcohol/tobacco: more formal chain
-    3L,  0.28, 0.52,   # clothing       : mix formal/informal boutiques
-    4L,  0.68, 0.84,   # housing/util.  : utilities near-formal (CIE/SODECI)
-    5L,  0.28, 0.48,   # furnishings    : artisanal in rural areas
-    6L,  0.38, 0.66,   # health         : private clinics vs traditional
-    7L,  0.32, 0.62,   # transport      : informal taxis dominate
-    8L,  0.82, 0.94,   # info/comm      : near-fully formal (licensed ops)
-    9L,  0.35, 0.58,   # recreation     : small share, mix
-    10L, 0.62, 0.78,   # education      : registered schools more urban
-    11L, 0.18, 0.52,   # restaurants    : highly informal (maquis, gargotes)
-    12L, 0.88, 0.95,   # insurance      : formal by definition
-    13L, 0.22, 0.48,   # personal care  : hair salons, barbers — high IEC
-    98L, 0.00, 0.00,   # non-consumption
-    99L, 0.00, 0.00    # non-consumption
+    1L,  0.18, 0.42,   # aliment/bev       : tres informel, fort ecart de milieu
+    2L,  0.55, 0.72,   # alcool/tabac: chaines plus formelles
+    3L,  0.28, 0.52,   # habillement       : melange boutiques formelles/informelles
+    4L,  0.68, 0.84,   # logement/util.  : services quasi-formels (CIE/SODECI)
+    5L,  0.28, 0.48,   # amenagement    : artisanal en milieu rural
+    6L,  0.38, 0.66,   # sante         : cliniques privees vs traditionnelles
+    7L,  0.32, 0.62,   # transport      : taxis informels dominants
+    8L,  0.82, 0.94,   # info/comm      : quasi-pleinement formel (operateurs autorises)
+    9L,  0.35, 0.58,   # recreation     : faible part, melange
+    10L, 0.62, 0.78,   # education      : ecoles enregistrees plus urbaines
+    11L, 0.18, 0.52,   # restaurants    : tres informel (maquis, gargotes)
+    12L, 0.88, 0.95,   # assurance      : formel par definition
+    13L, 0.22, 0.48,   # soins personnels  : salons de coiffeure — IEC elevee
+    98L, 0.00, 0.00,   # non-consommation
+    99L, 0.00, 0.00    # non-consommation
   )
 
   df <- df %>%
@@ -74,11 +74,11 @@ run_sensitivity_taxation <- function(paths) {
     ) %>%
     dplyr::select(-alpha_rural, -alpha_urban, -is_rural)
 
-  # ── SCENARIO 3: CEI × decile (IEC calibrated, Bachas et al. 2024) ────────
-  # alpha(coicop, d) = alpha_D1 + (d-1) × slope, capped at 1
-  # Slopes reflect Bachas et al. estimate: IEC slope ~-5 to -8 pp per log-doubling
+  # ── SCENARIO 3 : CEI × decile (IEC calibree, Bachas et al. 2024) ─────────
+  # alpha(coicop, d) = alpha_D1 + (d-1) × slope, cap a 1
+  # Les pentes refleter l'estimation de Bachas et al. : pente IEC ~-5 a -8 pp par doublement log
 
-  # First compute household-level consumption for decile assignment
+# Calculer d'abord la consommation au niveau menage pour l'assignation des deciles
   df <- df %>%
     dplyr::group_by(hhid) %>%
     dplyr::mutate(conso_w_hh = sum(depan_w, na.rm = TRUE)) %>%
@@ -93,19 +93,19 @@ run_sensitivity_taxation <- function(paths) {
 
   alpha3_params <- tibble::tribble(
     ~coicop_num, ~alpha_d1, ~slope,
-    1L,  0.12, 0.034,   # food/bev       : steepest IEC (D1→0.12, D10→0.42)
-    2L,  0.48, 0.024,   # alcohol/tobacco: flatter IEC
-    3L,  0.22, 0.030,   # clothing
-    4L,  0.62, 0.022,   # housing/util.  : flattest (formal regardless)
-    5L,  0.22, 0.028,   # furnishings
-    6L,  0.30, 0.040,   # health         : steep (private clinics at top)
-    7L,  0.25, 0.038,   # transport      : poor=informal taxis, rich=cars
-    8L,  0.78, 0.015,   # info/comm      : near-flat, formal at all deciles
+    1L,  0.12, 0.034,   # aliment/bev       : IEC la plus raide (D1→0.12, D10→0.42)
+    2L,  0.48, 0.024,   # alcool/tabac: IEC plus plate
+    3L,  0.22, 0.030,   # habillement
+    4L,  0.62, 0.022,   # logement/util.  : la plus plate (formel independamment)
+    5L,  0.22, 0.028,   # amenagement
+    6L,  0.30, 0.040,   # sante         : raide (cliniques privees aux sommets)
+    7L,  0.25, 0.038,   # transport      : pauvres=taxis informels, riches=voitures
+    8L,  0.78, 0.015,   # info/comm      : quasi-plate, formel a tous les deciles
     9L,  0.28, 0.032,   # recreation
     10L, 0.55, 0.025,   # education
-    11L, 0.12, 0.038,   # restaurants    : same IEC profile as food/bev
-    12L, 0.85, 0.010,   # insurance      : near-formal throughout
-    13L, 0.15, 0.034,   # personal care  : steep IEC (informal salons)
+    11L,  0.12, 0.038,   # restaurants    : meme profil IEC que aliment/bev
+    12L,  0.85, 0.010,   # assurance      : quasi-formel partout
+    13L,  0.15, 0.034,   # soins personnels  : IEC raide (salons informels)
     98L, 0.00, 0.000,
     99L, 0.00, 0.000
   )
@@ -118,7 +118,7 @@ run_sensitivity_taxation <- function(paths) {
     ) %>%
     dplyr::select(-alpha_d1, -slope)
 
-  # ── Diagnostics: alpha by COICOP × decile ────────────────────────────────
+  # ── Diagnostiques : alpha par COICOP × decile ───────────────────────────
   alpha_diag_decile <- df %>%
     dplyr::group_by(coicop_num, decile) %>%
     dplyr::summarise(
@@ -140,7 +140,7 @@ run_sensitivity_taxation <- function(paths) {
                file.path(paths$TABLES, "06",
                          "06_01_alpha_diagnostics_coicop_milieu.xlsx"))
 
-  # ── Aggregate to household level ──────────────────────────────────────────
+  # ── Agreger au niveau menage ────────────────────────────────────────────
   hh_sens <- df %>%
     dplyr::group_by(hhid) %>%
     dplyr::summarise(
@@ -164,7 +164,7 @@ run_sensitivity_taxation <- function(paths) {
                file.path(paths$SILVER, "06",
                          "fiscal_sensitivity_taxation.parquet"))
 
-  # ── Effective VAT rates by decile ─────────────────────────────────────────
+  # ── Taux de TVA effectif par decile ──────────────────────────────────────
   rates_by_decile <- hh_sens %>%
     dplyr::group_by(decile) %>%
     dplyr::summarise(
@@ -178,10 +178,10 @@ run_sensitivity_taxation <- function(paths) {
                file.path(paths$TABLES, "06",
                          "06_01_decile_effective_rates_by_scenario.xlsx"))
 
-  message("  Effective VAT by decile and scenario:")
+  message("  TVA effective par decile et scenario :")
   print(rates_by_decile)
 
-  # ── CEQ indices per scenario ───────────────────────────────────────────────
+  # ── Indices CEQ par scenario ──────────────────────────────────────────────
   G_market <- weighted_gini(hh_sens$conso_w, hh_sens$hhweight)
 
   hh_sens <- hh_sens %>%
@@ -193,7 +193,7 @@ run_sensitivity_taxation <- function(paths) {
     )
 
   scenarios <- list(
-    list(s = "strict",        desc = "Alpha=1, full taxation",
+    list(s = "strict",        desc = "Alpha=1, taxation complete",
          vat = "vat_strict", cons = "consumable_strict"),
     list(s = "s2_milieu",     desc = "CEI x milieu (Bachas 2024 + WB WPS10703)",
          vat = "vat_s2",     cons = "consumable_s2"),
@@ -216,15 +216,15 @@ run_sensitivity_taxation <- function(paths) {
     )
   })
 
-  message("\n  CEQ summary:")
+  message("\n  Resume CEQ :")
   print(ceq_summary)
 
   save_parquet(ceq_summary,
                file.path(paths$SILVER, "06",
                          "06_01_ceq_summary_scenarios.parquet"))
 
-  # ── Bootstrap confidence intervals on Kakwani (500 reps) ─────────────────
-  message(">>> Bootstrap CIs on Kakwani (500 reps)...")
+  # ── Intervalles de confiance bootstrap sur Kakwani (500 rep) ────────────
+  message(">>> IC bootstrap sur Kakwani (500 rep)...")
 
   bs_list <- list(
     list(name = "kak_strict", tax = "vat_strict"),
@@ -259,7 +259,7 @@ run_sensitivity_taxation <- function(paths) {
   export_excel(bs_results,
                file.path(paths$TABLES, "06", "06_01_bootstrap_kakwani.xlsx"))
 
-  # ── Annotate CEQ summary ──────────────────────────────────────────────────
+  # ── Annoter le resume CEQ ─────────────────────────────────────────────────
   ceq_annotated <- ceq_summary %>%
     dplyr::mutate(
       progressive        = as.integer(kakwani > 0),

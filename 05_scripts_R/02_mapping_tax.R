@@ -1,42 +1,44 @@
 # 02_mapping_tax.R
 #
-# OBJECTIVE:
-# Build a clean VAT mapping from the official CGI 2026 table, then merge
-# it with the cleaned consumption data.
+# OBJECTIF :
+# Construire un mapping TVA propre a partir du tableau CGI 2026 officiel, puis le fusionner
+# avec les donnees de consommation nettoyees.
 #
-# KEY STEPS:
-# 1. Import Excel VAT mapping (sheet TVA_detail)
-# 2. Handle "Hors champ" (out-of-scope) products
-# 3. Clean and convert VAT rate strings to proportions
-# 4. Merge with conso_clean
-# 5. Keep only matched, in-scope observations
-# 6. Label variables and save
+# ETAPES CLES :
+# 1. Importer le mapping Excel TVA (feuille TVA_detail)
+# 2. Gerer les produits "Hors champ" (hors du champ TVA)
+# 3. Nettoyer et convertir les chaines de taux TVA en proportions
+# 4. Fusionner avec conso_clean
+# 5. Garder uniquement les observations correspondantes et hors champ
+# 6. Etiqueter les variables et sauvegarder
 #
-# INPUT:  DATA/COPR_EHCVM_TVA_renseigne.xlsx (sheet TVA_detail)
+# ENTREE:  DATA/COPR_EHCVM_TVA_renseigne.xlsx (feuille TVA_detail)
 #         SILVER/01/conso_clean.parquet
-# OUTPUT: SILVER/02/mapping_fiscal_official.parquet
-#         SILVER/01/conso_clean.parquet  (updated with fiscal variables)
+# SORTIE: SILVER/02/mapping_fiscal_official.parquet
+#         SILVER/01/conso_clean.parquet  (mise a jour avec variables fiscales)
 #
-# NOTES:
-# - Merge key: code + produit
-# - VAT rates stored as proportions: 0, 0.09, 0.18
-# - hors_champ == 1 for products outside VAT scope OR non-market acquisitions
+# NOTES :
+# - Cle de fusion: code + produit
+# - Taux TVA stockes en proportions: 0, 0,09, 0,18
+# - hors_champ == 1 pour produits hors champ TVA OU acquisitions non marchandes
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR: Armand Kouakou Djaha, MSc (version Stata originale)
+# Traduction R: rewrite-r branch
 
 map_tax <- function(paths) {
 
-  message(">>> STEP 2: Loading and cleaning VAT mapping")
+  message(">>> ETAPE 2: Chargement et nettoyage du mapping TVA")
 
-  # ── Import Excel mapping ──────────────────────────────────────────────────
-  raw <- readxl::read_excel(
-    file.path(paths$ROOT, "01_data_sources", "COPR_EHCVM_TVA_renseigne.xlsx"),
-    sheet = "TVA_detail"
+  # ── Importer le mapping Excel ──────────────────────────────────────────────────
+  raw <- read_source_excel(
+    path_parts = c("COPR_EHCVM_TVA_renseigne.xlsx"),
+    sheet = "TVA_detail",
+    .label = "Classeur de mapping TVA",
+    .required_cols = c("code", "produit", "mode", "TVA_statutaire")
   )
 
-  # ── Handle "Hors champ" ───────────────────────────────────────────────────
-  # "Hors champ" = outside VAT scope; mode != "Achat" = non-market acquisition
+  # ── Gerer le "Hors champ" ───────────────────────────────────────────────────
+  # "Hors champ" = hors du champ TVA ; mode != "Achat" = acquisition non marchande
   mapping <- raw %>%
     dplyr::mutate(
       hors_champ = as.integer(
@@ -57,19 +59,19 @@ map_tax <- function(paths) {
     dplyr::arrange(code, produit)
 
   # ── Diagnostics ───────────────────────────────────────────────────────────
-  message("  VAT rate distribution:")
+  message("  Distribution des taux TVA:")
   print(table(mapping$r_vat_official, useNA = "ifany"))
   message("  Hors champ: ", sum(mapping$hors_champ, na.rm = TRUE))
 
   save_parquet(mapping,
                file.path(paths$SILVER, "02", "mapping_fiscal_official.parquet"))
 
-  # ── Merge with consumption data ───────────────────────────────────────────
-  message(">>> Merging mapping with consumption data")
+  # ── Fusionner avec les donnees de consommation ───────────────────────────────────────────
+  message(">>> Fusion du mapping avec les donnees de consommation")
 
   conso <- load_parquet(file.path(paths$SILVER, "01", "conso_clean.parquet"))
 
-  # Prepare merge keys (code + produit as character)
+  # Preparer les cles de fusion (code + produit en caractere)
   conso <- conso %>%
     dplyr::mutate(
       code    = as.character(as.integer(codpr)),
@@ -85,15 +87,15 @@ map_tax <- function(paths) {
   merged <- conso %>%
     dplyr::left_join(mapping_chr, by = c("code", "produit"))
 
-  # ── Merge diagnostics ─────────────────────────────────────────────────────
+  # ── Diagnostics de la fusion ─────────────────────────────────────────────────────
   n_matched   <- sum(!is.na(merged$r_vat_official))
   n_unmatched <- sum(is.na(merged$r_vat_official))
-  message(sprintf("  Matched: %s | Unmatched (will be dropped): %s",
+  message(sprintf("  Correspondants: %s | Non correspondants (seront supprimes): %s",
                   format(n_matched, big.mark = ","),
                   format(n_unmatched, big.mark = ",")))
 
   if (n_unmatched > 0) {
-    message("  Unmatched products (sample):")
+    message("  Produits non correspondants (echantillon):")
     unmatched_sample <- merged %>%
       dplyr::filter(is.na(r_vat_official)) %>%
       dplyr::distinct(code, produit) %>%
@@ -101,18 +103,18 @@ map_tax <- function(paths) {
     print(unmatched_sample)
   }
 
-  # ── Keep matched, in-scope observations only ──────────────────────────────
+  # ── Garder uniquement les observations correspondantes et hors champ ──────────────────────────────
   merged_clean <- merged %>%
     dplyr::filter(!is.na(r_vat_official)) %>%
     dplyr::filter(hors_champ == 0)
 
-  message(sprintf("  Rows after scope filter: %s",
+  message(sprintf("  Lignes apres filtre de champ: %s",
                   format(nrow(merged_clean), big.mark = ",")))
 
-  # ── Save updated conso_clean with fiscal variables ────────────────────────
+  # ── Sauvegarder conso_clean mis a jour avec variables fiscales ────────────────────────
   save_parquet(merged_clean,
                file.path(paths$SILVER, "01", "conso_clean.parquet"))
 
-  message(">>> Official VAT mapping cleaned, merged, and saved")
+  message(">>> Mapping TVA officiel nettoye, fusionne et sauvegarde")
   invisible(merged_clean)
 }

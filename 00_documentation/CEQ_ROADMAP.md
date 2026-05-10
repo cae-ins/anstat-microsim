@@ -11,29 +11,35 @@
 
 | # | Étape | Description | Statut |
 |---|---|---|---|
-| 01 | `01_prepare_data` | Nettoyage EHCVM, winsorisation, mapping COICOP | ✅ Commité (fix en attente) |
-| 02 | `02_mapping_tax` | Mapping TVA officielle par codpr | ✅ Commité (fix en attente) |
+| 01 | `01_prepare_data` | Nettoyage EHCVM, winsorisation, mapping COICOP | ✅ Exécutable et vérifié |
+| 02 | `02_mapping_tax` | Mapping TVA officielle par codpr | ✅ Exécutable et vérifié |
 | 03 | `03_compute_taxes` | TVA directe au niveau ménage, concepts Market/Consumable | ✅ Commité |
 | 04 | `04_analysis` | Analyse distributive (déciles, quintiles, milieu, région) | ✅ Commité |
 | 05 | `05_progressivity` | Kakwani, Reynolds-Smolensky, courbes de Lorenz/concentration | ✅ Commité |
 | 06a | `06_01_sensitivity_taxation` | Sensibilité scénarios d'informalité (strict / CEI×milieu / CEI×décile) | ✅ Commité |
-| 06b | `06_02_sensitivity_ranking` | Sensibilité classements (total / pc / AE1 / AE2) | ✅ Commité (fix en attente) |
+| 06b | `06_02_sensitivity_ranking` | Sensibilité classements (total / pc / AE1 / AE2) | ✅ Exécutable et vérifié |
 | 07 | `07_appendix_tables` | Tableaux annexes | ✅ Commité |
 | 08 | `08_figures` | Figures analytiques fig1–fig4 | ✅ Commité |
 | 09 | `09_vat_determinants` | Déterminants TVA effective (régressions OLS) | ✅ Commité |
 | 10 | `10_reform_chicken_inputs` | Simulation réforme intrants avicoles, Kakwani | ✅ Commité |
 | 11 | `11_reform_figures` | Figures réforme figR1–figR4 | ✅ Commité |
-| 12 | `12_poverty_incidence` | FGT (P0/P1/P2) avant/après TVA, 3 scénarios, milieu, région | ✅ Commité (fix en attente) |
-| 13 | `13_leontief_io` | TVA enchâssée via OECD ICIO 2023 (modèle de prix Leontief) | ⏳ Écrit, non commité |
-| 14 | `14_leontief_poverty` | Impact TVA enchâssée sur pauvreté, direct vs total I/O | ⏳ Écrit, non commité |
-| 15 | `15_reform_vat_simulation` | Simulation réforme 0%→9% (agri / commerce / tous), FGT, charge quintile | ⏳ Écrit, non commité |
+| 12 | `12_poverty_incidence` | FGT (P0/P1/P2) avant/après TVA, 3 scénarios, milieu, région | ✅ Exécutable et vérifié |
+| 13 | `13_leontief_io` | TVA enchâssée via OECD ICIO 2023 (modèle de prix Leontief) | ✅ Script aligné avec l'I/O commune |
+| 14 | `14_leontief_poverty` | Impact TVA enchâssée sur pauvreté, direct vs total I/O | ✅ Script aligné avec l'I/O commune |
+| 15 | `15_reform_vat_simulation` | Simulation réforme 0%→9% (agri / commerce / tous), FGT, charge quintile | ✅ Script aligné avec l'I/O commune |
 
-### Correctifs en attente (unstaged)
+### Correctifs récents
 
-- `01_prepare_data.R` — décodage labels `codpr` + mapping COICOP 13 divisions
-- `02_mapping_tax.R` — fix chemin Excel + conversion `codpr` via `as.integer()`
-- `06_02_sensitivity_ranking.R` — fix `group_by` (mutate + nouvelle colonne)
-- `12_poverty_incidence.R` — fix FGT : poids individu `w_ind = hhweight × hhsize`, P0 binaire
+- `01_prepare_data.R` utilise désormais `load_raw_dta()` et des validations de colonnes
+- `02_mapping_tax.R` passe par la couche d'I/O commune pour le fichier Excel de mapping
+- `06_02_sensitivity_ranking.R` a été stabilisé sur la jointure welfare et les contrôles d'entrée
+- `09_vat_determinants.R` a été corrigé sur la jointure `region` et l'alignement du clustering `grappe`
+- `12_poverty_incidence.R` vérifie explicitement les colonnes welfare critiques
+- `utils/io.R` centralise désormais les contrôles d'existence, lectures `csv/xlsx`, et validations de schéma
+
+### Point restant
+
+- Au moins un script de figures utilise encore `dplyr::case_match()`, ce qui produit un warning de dépréciation sans bloquer l'exécution
 
 ---
 

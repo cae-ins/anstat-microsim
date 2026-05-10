@@ -1,25 +1,25 @@
 # 08_figures.R
 #
-# OBJECTIVE:
-# Produce all main analytical figures.
+# OBJECTIF :
+# Produire toutes les figures analytiques principales.
 #
-# FIGURES:
-# Fig 1 — Effective VAT rate by decile: three informality scenarios
-# Fig 2 — Concentration curves: three scenarios + Lorenz + equality line
-# Fig 3 — VAT share by COICOP category (descriptive)
-# Fig 4 — Alpha profiles by decile for key COICOP categories (IEC calibration)
+# FIGURES :
+# Fig 1 — Taux TVA effectif par decile : trois scenarios d'informelite
+# Fig 2 — Courbes de concentration : trois scenarios + Lorentz + ligne d'egalite
+# Fig 3 — Part de la TVA par categorie COICOP (descriptif)
+# Fig 4 — Profils Alpha par decile pour les categories COICOP cles (calibration IEC)
 #
 # INPUT:  TABLES/06/06_01_decile_effective_rates_by_scenario.xlsx
 #         SILVER/06/fiscal_sensitivity_taxation.parquet
 #         TABLES/07/07_vat_by_coicop.xlsx
-# OUTPUT: FIGS/fig1_*.png ... FIGS/fig4_*.png
+# OUTPUT: FIG8/fig1_*.png ... FIG8/fig4_*.png
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : Armand Kouakou Djaha, MSc (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_figures <- function(paths) {
 
-  message(">>> STEP 8: Generating figures")
+  message(">>> ETAPE 8 : Generation des figures")
 
   # ── FIGURE 1 — Effective VAT rates by decile: three scenarios ─────────────
   rates <- readxl::read_excel(

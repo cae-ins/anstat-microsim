@@ -1,288 +1,284 @@
-# Incidence distributive de la TVA en Côte d'Ivoire
-### Microsimulation fiscale · EHCVM 2021 · Document de travail — Avril 2026
+# Incidence distributive de la TVA en Cote d'Ivoire
+### Microsimulation fiscale · EHCVM 2021 · Document de travail - Avril 2026
 
 ---
 
-## Table des matières
+## Table des matieres
 
-- [Présentation](#présentation)
+- [Presentation](#presentation)
 - [Cadre conceptuel](#cadre-conceptuel)
-- [Méthodologie](#méthodologie)
-- [Données](#données)
-- [Informalité et taxation effective](#informalité-et-taxation-effective)
-- [Résultats produits](#résultats-produits)
-- [Hypothèses principales](#hypothèses-principales)
-- [Limites et extensions en cours](#limites-et-extensions-en-cours)
-- [Structure du dépôt](#structure-du-dépôt)
-- [Architecture des données](#architecture-des-données)
-- [Reproductibilité](#reproductibilité)
-- [Références](#références)
+- [Methodologie](#methodologie)
+- [Donnees](#donnees)
+- [Informalite et taxation effective](#informalite-et-taxation-effective)
+- [Resultats produits](#resultats-produits)
+- [Hypotheses principales](#hypotheses-principales)
+- [Limites et extensions](#limites-et-extensions)
+- [Structure du depot](#structure-du-depot)
+- [Architecture des donnees](#architecture-des-donnees)
+- [Reproductibilite](#reproductibilite)
+- [Etat du pipeline](#etat-du-pipeline)
+- [References](#references)
 
 ---
 
-## Présentation
+## Presentation
 
-Ce projet estime l'**incidence distributive de la taxe sur la valeur ajoutée (TVA)** en Côte d'Ivoire à partir des données de consommation des ménages de l'**enquête EHCVM 2021**.
+Ce projet estime l'incidence distributive de la TVA en Cote d'Ivoire a partir des donnees de consommation des menages de l'enquete EHCVM 2021.
 
-L'objectif central est d'identifier **qui supporte effectivement la charge de la TVA** — en valeur absolue et relativement à la consommation totale — et de déterminer si le système fiscal est **progressif, proportionnel ou régressif** le long de la distribution du bien-être.
+L'objectif central est d'identifier qui supporte effectivement la charge de la TVA, en niveau et relativement a la consommation totale, et de determiner si le systeme est progressif, proportionnel ou regressif le long de la distribution du bien-etre.
 
-L'analyse est conçue comme un **exercice d'incidence fiscale de premier ordre**, fournissant un cadre transparent et reproductible adapté aux contraintes de données habituelles en Afrique subsaharienne.
+L'analyse est concue comme un exercice d'incidence fiscale de premier ordre, transparent, reproductible et adapte aux contraintes de donnees habituelles en Afrique subsaharienne.
 
 ---
 
 ## Cadre conceptuel
 
-L'analyse s'appuie sur le cadre **CEQ (Commitment to Equity)**, adapté au contexte ivoirien et aux données disponibles.
+L'analyse s'appuie sur le cadre CEQ (Commitment to Equity), adapte au contexte ivoirien et aux donnees disponibles.
 
-Dans le cadre CEQ standard, plusieurs concepts de revenu sont comparés (revenu de marché, revenu disponible, revenu consommable, revenu final). En raison des contraintes de données, ce projet se concentre sur le passage de la **consommation observée** à une **mesure de bien-être post-fiscalité simulée**.
+En pratique, le projet se concentre sur le passage de la consommation observee a une mesure de bien-etre post-fiscalite simulee.
 
-### Identité centrale
+### Identite centrale
 
+```text
+Revenu consommable = Consommation totale - Taxes indirectes (TVA)
 ```
-Revenu consommable = Consommation totale − Taxes indirectes (TVA)
-```
-
-Cette identité isole l'**effet direct des taxes à la consommation** sur le bien-être des ménages.
 
 ---
 
-## Méthodologie
+## Methodologie
 
-La stratégie empirique repose sur une **approche de microsimulation ascendante** en cinq étapes :
+La strategie empirique repose sur une approche de microsimulation ascendante en cinq etapes :
 
-| Étape | Description |
-|-------|-------------|
-| **1. Agrégation de la consommation** | Consommation au niveau du ménage construite à partir des dépenses par produit |
-| **2. Cartographie fiscale** | Chaque produit (`codpr`) reçoit un traitement fiscal (exonéré / taux réduit / taux normal) |
-| **3. Imputation de la taxe** | TVA simulée au niveau produit, puis agrégée au niveau ménage |
-| **4. Comparaison du bien-être** | Consommation avant taxe comparée au revenu consommable simulé |
-| **5. Analyse distributive** | Résultats analysés par décile via les taux effectifs, courbes de concentration et indices de progressivité |
+| Etape | Description |
+|---|---|
+| 1 | Agregation de la consommation au niveau menage a partir des depenses par produit |
+| 2 | Cartographie fiscale des produits (`codpr`) |
+| 3 | Imputation de la TVA au niveau produit puis agregation menage |
+| 4 | Construction des concepts de bien-etre avant / apres taxe |
+| 5 | Analyse distributive par decile, quintile, milieu et region |
 
 ---
 
-## Données
+## Donnees
 
-| Attribut | Détail |
-|----------|--------|
-| **Source** | EHCVM 2021 — Côte d'Ivoire |
-| **Unité d'observation** | Ménage × produit |
-| **Unité d'analyse** | Ménage |
+| Attribut | Detail |
+|---|---|
+| Source | EHCVM 2021 - Cote d'Ivoire |
+| Unite d'observation principale | Menage x produit |
+| Unite d'analyse | Menage |
 
-### Variables clés
+### Variables cles
 
 | Variable | Description |
-|----------|-------------|
+|---|---|
 | `codpr` | Identifiant produit |
-| `modep` | Mode d'acquisition (marché, autoconsommation, don, etc.) |
-| `depan` | Dépense annuelle |
-| `hhweight` | Pondération sondage |
+| `modep` | Mode d'acquisition |
+| `depan` | Depense annuelle |
+| `hhweight` | Ponderation sondage |
+
+### Fichiers sources utilises par le pipeline R
+
+- `01_data_sources/Dataout/ehcvm_conso_CIV2021.dta`
+- `01_data_sources/Dataout/ehcvm_welfare_2b_CIV2021.dta`
+- `01_data_sources/COPR_EHCVM_TVA_renseigne.xlsx`
+- `01_data_sources/concordance_codpr_ICIO.csv`
+- `01_data_sources/IO/CIV2020ttl.csv` pour l'extension input-output
 
 ---
 
-## Informalité et taxation effective
+## Informalite et taxation effective
 
-Un défi majeur dans les économies en développement est que **toutes les transactions ne sont pas effectivement taxées**, en raison de la prévalence du secteur informel.
+L'analyse integre trois scenarios de taxation effective inspires du cadre IEC (Informality Engel Curve) :
 
-Pour y répondre, l'analyse intègre des **scénarios de taxation effective hétérogène** basés sur le cadre de la **courbe d'Engel de l'informalité (IEC)** (Bachas, Gadenne & Jensen, 2024).
+- `Strict` : alpha = 1, borne superieure theorique
+- `S2` : alpha varie selon la categorie COICOP et le milieu urbain/rural
+- `S3` : alpha varie avec le decile de consommation
 
-### Scénario 1 — Strict (α = 1)
-
-- Taxation complète de toute la consommation éligible
-- Représente une **borne supérieure théorique**
-- Sert de référence pour la comparaison
-
-### Scénario 2 — CEI × milieu
-
-- α varie selon la catégorie COICOP **et** le milieu (urbain/rural)
-- Capture les différences structurelles d'accès au marché et de formalisation
-
-### Scénario 3 — CEI × décile
-
-- α croît de façon monotone avec le niveau de consommation
-- Reflète le fait que **les ménages plus aisés transactent davantage dans les marchés formels**
-
-Ces scénarios permettent de tester la robustesse des conclusions quant à l'**effet de l'informalité sur les résultats distributifs**, au-delà des niveaux agrégés de taxation.
+Ces scenarios servent a tester la robustesse des resultats distributifs a l'informalite.
 
 ---
 
-## Résultats produits
+## Resultats produits
 
-- Taux effectifs de TVA par décile
-- Charge fiscale (absolue et relative à la consommation)
-- Courbes de concentration (avant et après taxe)
-- Coefficients de Gini (avant et après taxe)
-- Indice de Kakwani de progressivité fiscale
-- Analyses de sensibilité et de robustesse par scénario
-
----
-
-## Hypothèses principales
-
-| Hypothèse | Description |
-|-----------|-------------|
-| **Répercussion intégrale** | La TVA est entièrement répercutée dans les prix à la consommation (pas d'absorption par le producteur) |
-| **Consommation comme indicateur de bien-être** | La consommation totale du ménage est utilisée comme proxy du revenu permanent |
-| **Équilibre partiel** | Pas d'effets indirects via les chaînes de production ni d'ajustements d'équilibre général |
-
-> Les résultats doivent être interprétés comme une **approximation de premier ordre** de l'incidence fiscale.
+- Taux effectifs de TVA par decile
+- Charge fiscale absolue et relative
+- Courbes de concentration
+- Coefficients de Gini avant et apres taxe
+- Indice de Kakwani
+- Analyses de sensibilite
+- Impact sur la pauvrete via les indices FGT
+- Scenarios de reforme sur les intrants avicoles
 
 ---
 
-## Limites et extensions en cours
+## Hypotheses principales
+
+| Hypothese | Description |
+|---|---|
+| Repercussion integrale | La TVA est entierement repercutee dans les prix a la consommation |
+| Consommation comme proxy du bien-etre | La consommation totale du menage sert de proxy du revenu permanent |
+| Equilibre partiel | Pas d'effets comportementaux ni d'equilibre general dans le coeur du pipeline |
+
+Les resultats doivent etre interpretes comme une approximation de premier ordre de l'incidence fiscale.
+
+---
+
+## Limites et extensions
 
 | Limite | Statut |
-|--------|--------|
-| Pas de taxes directes ni de transferts sociaux modélisés | Périmètre de premier ordre — incidence TVA uniquement |
-| Pas de réponses comportementales (ajustements de prix ou de demande) | Incidence statique par construction |
-| Pas d'effets de transmission entrées-sorties | En cours — branche `integration-IO-matrix` : modèle de prix de Leontief avec la matrice OCDE ICIO 2023, pour capturer la TVA enchâssée dans les consommations intermédiaires et les biens exonérés |
-| Informalité modélisée par scénarios, non observée directement | Traitée via les 3 scénarios IEC (Bachas et al. 2024) |
-| Pas d'analyse de scénarios de réforme fiscale | En cours — branche `reform-scenarios` : réforme de la TVA sur les intrants avicoles, impact distributif par décile, indice de Kakwani, tableau de sensibilité croisé |
-| Pas d'estimation de l'impact sur la pauvreté | Traité — étape 12 (R et Stata) : indices FGT (P0, P1, P2) avant et après TVA, par décile, milieu et région ; nouveaux pauvres ; composante réforme avicole |
-
-Ces limites sont explicitement reconnues dans le cadre d'une **stratégie de recherche transparente et progressive**.
+|---|---|
+| Pas de taxes directes ni transferts sociaux modelises dans le coeur CEQ | Hors perimetre courant |
+| Informalite observee indirectement | Traitee par scenarios |
+| Effets input-output | Traites par les scripts `13` et `14` |
+| Reforme fiscale | Traitee par les scripts `10`, `11` et `15` |
+| Pauvrete | Traitee par le script `12` |
 
 ---
 
-## Structure du dépôt
+## Structure du depot
 
-```
+```text
 anstat-microsim/
-│
-├── 00_documentation/
-│   ├── EHCVM_products/       # Fichiers de nomenclature des produits
-│   ├── methodologie/         # Notes méthodologiques CEQ et extensions
-│   ├── presentation/         # Présentations
-│   ├── ressources_CEQ/       # Scripts Stata CEQ de référence (BM CIV 2021)
-│   └── statutory_rates/      # Code fiscal et annexes fiscales
-│
-├── 01_data_sources/           # Couche Bronze — données brutes (non versionnées)
-│   ├── Datain/               # Fichiers bruts EHCVM 2021
-│   ├── Dataout/              # Données traitées EHCVM (.dta)
-│   ├── Documents/            # Documents de référence (questionnaires, méthodologie)
-│   └── Programs/             # Scripts de traitement de l'enquête (équipe EHCVM)
-│
-├── 02_data_intermediate/      # Couche Silver — intermédiaires parquet (non versionnés)
-│
-├── 03_data_output/            # Couche Gold — données analytiques finales (non versionnées)
-│
-├── 04_scripts/                # Pipeline Stata (version originale)
-│   ├── 00_master.do          # Script maître — lance le pipeline complet
-│   ├── 00_setup.do           # Environnement et chemins globaux
-│   ├── 01_prepare_data.do    # Préparation des données et construction des variables
-│   ├── 02_mapping_tax.do     # Cartographie fiscale des produits
-│   ├── 03_compute_taxes.do   # Calcul de l'incidence TVA au niveau ménage
-│   ├── 04_analysis.do        # Résultats distributifs CEQ
-│   ├── 05_progressivity.do   # Mesures de progressivité (Kakwani, Gini)
-│   ├── 06_01_sensitivity_taxation.do  # Sensibilité : scénarios de traitement fiscal
-│   ├── 06_02_sensitivity_ranking.do   # Sensibilité : robustesse du classement bien-être
-│   ├── 07_appendix_tables.do # Tableaux annexes
-│   ├── 08_figures.do         # Courbes de concentration, profils de taux effectifs
-│   ├── 09_vat_determinants.do        # Déterminants socio-démographiques de l'exposition à la TVA
-│   ├── 10_reform_chicken_inputs.do   # Simulation de réforme : TVA sur intrants avicoles
-│   ├── 11_reform_figures.do          # Figures de réforme
-│   └── 12_poverty_incidence.do       # Incidence sur la pauvreté — FGT (P0, P1, P2)
-│
-├── 05_scripts_R/              # Pipeline R (réécriture — branche rewrite-r)
-│   ├── 00_master.R           # Orchestrateur inspiré INES (enchainement + lance_pipeline)
-│   ├── 00_setup.R            # Chemins, paquets, utilitaires ; source config.R
-│   ├── config.R              # Indicateur source de données (local / MinIO) + credentials
-│   ├── 01_prepare_data.R     # Bronze -> Silver : filtre, winsorisation, sauvegarde parquet
-│   ├── 02_mapping_tax.R      # Cartographie TVA depuis Excel -> parquet
-│   ├── 03_compute_taxes.R    # Agrégation TVA ménage + concepts de revenu CEQ
-│   ├── 04_analysis.R         # Ventilation par décile/quintile, milieu et région
-│   ├── 05_progressivity.R    # Gini, IC, Kakwani, RS ; courbes de Lorenz et de concentration
-│   ├── 06_01_sensitivity_taxation.R  # 3 scénarios d'informalité + bootstrap Kakwani
-│   ├── 06_02_sensitivity_ranking.R   # Robustesse sur 4 classements bien-être
-│   ├── 07_appendix_tables.R  # Tableaux étendus (COICOP, région, milieu)
-│   ├── 08_figures.R          # Figures 1 à 4
-│   ├── 09_vat_determinants.R # MCO M1-M4, erreurs-types robustes cluster, marginsplot
-│   ├── 10_reform_chicken_inputs.R    # Simulation de réforme avicole
-│   ├── 11_reform_figures.R   # Figures de réforme R1-R4
-│   ├── 12_poverty_incidence.R        # Incidence sur la pauvreté — FGT (P0, P1, P2)
-│   └── utils/
-│       ├── distributive.R    # Gini, IC, Kakwani, ntile pondérés
-│       └── io.R              # Parquet, Excel, figures, load_raw_dta (local/MinIO)
-│
-├── 06_logs/                   # Journaux d'exécution (non versionnés)
-│
-├── 07_reports/
-│   ├── tables/               # Tableaux Excel exportés (non versionnés)
-│   └── figures/              # Figures et graphiques (non versionnés)
-│
-├── .env.example               # Modèle de credentials MinIO (copier vers .env, ne jamais committer)
-└── README.md
+|
+|-- 00_documentation/
+|-- 01_data_sources/
+|-- 02_data_intermediate/
+|-- 03_data_output/
+|-- 04_scripts/
+|-- 05_scripts_R/
+|-- 06_logs/
+|-- 07_reports/
+|-- 08_lit_review/
+|-- .env.example
+`-- README.md
 ```
+
+### Organisation utile
+
+- `01_data_sources/` : sources brutes et fichiers de reference
+- `02_data_intermediate/` : couche `Silver` de travail en `parquet`
+- `03_data_output/` : reserve pour sorties analytiques finales si besoin
+- `05_scripts_R/` : pipeline R principal
+- `07_reports/` : exports de tables et figures
 
 ---
 
-## Architecture des données
+## Architecture des donnees
 
-Le pipeline sépare le code, les données et le calcul — une frontière nette qui facilite la réplication sur l'infrastructure institutionnelle.
+Le pipeline separe code, donnees et sorties. Cette frontiere facilite la replication locale et la transition vers un stockage partage.
 
+```text
+Developpement local         Reseau institutionnel
+01_data_sources/            bucket MinIO : anstat-raw
+02_data_intermediate/   ->  bucket MinIO : anstat-silver
 ```
-Développement local          Réseau institutionnel
-───────────────────          ──────────────────────────────────────
-01_data_sources/             bucket MinIO : anstat-raw    (Bronze)
-02_data_intermediate/    →   bucket MinIO : anstat-silver (Silver, parquet)
-```
 
-La source de données est contrôlée par un unique indicateur dans `05_scripts_R/config.R` :
+La source de donnees est controlee par `05_scripts_R/config.R` :
 
 ```r
-USE_MINIO <- FALSE   # passer à TRUE sur le réseau institutionnel
+USE_MINIO <- FALSE
 ```
 
-Les credentials ne sont jamais codés en dur. Copier `.env.example` vers `.env` et renseigner les valeurs :
+Les credentials MinIO ne sont jamais codes en dur. Copier `.env.example` vers `.env` et renseigner :
 
-```
+```text
 MINIO_ENDPOINT=http://minio.institution.local:9000
 MINIO_ACCESS_KEY=...
 MINIO_SECRET_KEY=...
 ```
 
-Tous les accès aux fichiers `.dta` bruts passent par `load_raw_dta()` dans `utils/io.R`, qui route de façon transparente vers le chemin local ou MinIO selon l'indicateur.
+En pratique, le projet mobilise aujourd'hui la plateforme de facon minimale :
+
+- `01_data_sources/` reste la source locale de developpement
+- `02_data_intermediate/` est la vraie couche `Silver` operationnelle
+- `MinIO` est prevu comme stockage partage sans changer l'arborescence
+- le projet ne depend pas, a ce stade, de `Spark`, `Iceberg`, `Nessie`, `Trino`, `Superset` ou `Airflow`
 
 ---
 
-## Reproductibilité
+## Reproductibilite
 
 **Pipeline Stata (`04_scripts/`)**
 
-- Code en fichiers `.do` avec commentaires intégrés
-- Chemins paramétrés via `00_setup.do`
+- scripts `.do`
+- chemins centralises dans `00_setup.do`
 
 **Pipeline R (`05_scripts_R/`)**
 
-- Orchestrateur inspiré INES : `00_master.R` définit un data.frame `enchainement` ; `lance_pipeline(premiere_etape, derniere_etape)` exécute n'importe quel sous-ensemble d'étapes
-- Les intermédiaires parquet (couche Silver) remplacent les fichiers `.dta` intermédiaires Stata — I/O plus rapide, format agnostique au langage
-- Erreurs-types robustes à la corrélation intra-cluster via `sandwich::vcovCL()` — équivalent de `vce(cluster grappe)` en Stata
-- Indices distributifs pondérés (Gini, IC, Kakwani, RS) implémentés à partir des formules de base avec rang fractionnaire à mi-point — cohérent avec `-conindex-` sous Stata
-- Intervalles de confiance bootstrap sur le Kakwani (500 réplications)
-- Tous les outputs (tableaux, figures) exportés automatiquement vers `07_reports/`
+- `00_master.R` definit l'orchestrateur `lance_pipeline(premiere_etape, derniere_etape)`
+- les intermediaires sont stockes en `parquet`
+- les acces aux sources et sorties sont centralises dans `utils/io.R`
+- des validations explicites verifient l'existence des fichiers et des colonnes critiques
+- `lance_pipeline()` valide les bornes d'etapes avant execution
+- les outputs sont exportes automatiquement vers `07_reports/`
 
-Pour lancer le pipeline R complet depuis la racine du projet :
+### Lancement depuis R
 
 ```r
 source("05_scripts_R/00_master.R")
 lance_pipeline(premiere_etape = 1, derniere_etape = 13)
 ```
 
-Pour lancer uniquement l'analyse de pauvreté (après que les étapes 6 et 11 ont tourné) :
+Pour ne lancer que l'etape pauvrete :
 
 ```r
 lance_pipeline(premiere_etape = 13, derniere_etape = 13)
 ```
 
+### Lancement batch depuis PowerShell
+
+```powershell
+& 'C:\Program Files\R\R-4.5.3\bin\Rscript.exe' -e "source('05_scripts_R/00_master.R')"
+```
+
+### Dependances R
+
+- `00_setup.R` charge les paquets requis
+- si un paquet est absent, `00_setup.R` tente de l'installer
+- en environnement verrouille, il peut etre preferable de preinstaller les paquets avant le premier run
+
 ---
 
-## Références
+## Etat du pipeline
 
-- Bachas, P., Gadenne, L., & Jensen, A. (2024). *Informality, Consumption Taxes, and Redistribution*. American Economic Review.
-- Lustig, N. (Ed.) (2018). *Commitment to Equity Handbook*. Brookings Institution Press.
+Le pipeline R a ete verifie en execution reelle sur ce depot.
+
+- Les etapes `1` a `13` s'executent avec succes
+- Les sorties intermediaires sont ecrites dans `02_data_intermediate/`
+- Les tableaux et figures sont exportes dans `07_reports/`
+- Les scripts `13`, `14` et `15` existent comme extensions du pipeline principal et utilisent la meme couche d'I/O
+
+### Scripts R principaux
+
+| Etape | Script | Role |
+|---|---|---|
+| 1 | `01_prepare_data.R` | nettoyage, filtre achat, winsorisation, `parquet` |
+| 2 | `02_mapping_tax.R` | mapping TVA |
+| 3 | `03_compute_taxes.R` | TVA directe menage |
+| 4 | `04_analysis.R` | resultats distributifs |
+| 5 | `05_progressivity.R` | Gini, Kakwani, RS |
+| 6 | `06_01_sensitivity_taxation.R` | scenarios d'informalite |
+| 7 | `06_02_sensitivity_ranking.R` | robustesse des classements |
+| 8 | `07_appendix_tables.R` | tableaux annexes |
+| 9 | `08_figures.R` | figures principales |
+| 10 | `09_vat_determinants.R` | regressions de determinants |
+| 11 | `10_reform_chicken_inputs.R` | reforme avicole |
+| 12 | `11_reform_figures.R` | figures de reforme |
+| 13 | `12_poverty_incidence.R` | pauvrete FGT |
+
+### Points ouverts
+
+- au moins un script de figures utilise `dplyr::case_match()`, ce qui produit un warning de depreciation sans bloquer l'execution
+- `03_data_output/` est encore peu utilise ; la plupart des sorties analytiques vivent dans `02_data_intermediate/` et `07_reports/`
+
+---
+
+## References
+
+- Bachas, P., Gadenne, L., & Jensen, A. (2024). *Informality, Consumption Taxes, and Redistribution*.
+- Lustig, N. (Ed.) (2018). *Commitment to Equity Handbook*.
 - World Bank (2024). *Urban Informality in Sub-Saharan Africa*. Policy Research Working Paper No. 10703.
 - UNECA (2019). *Economic Report on Africa: Fiscal Policy for Financing Sustainable Development*.
-
----
 
 ---
 

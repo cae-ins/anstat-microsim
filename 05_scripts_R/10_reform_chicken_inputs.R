@@ -1,32 +1,33 @@
 # 10_reform_chicken_inputs.R
 #
-# OBJECTIVE:
-# Simulate the distributional impact of a VAT increase on poultry production
-# inputs (compound feed, day-old chicks, veterinary products).
+# OBJECTIF :
+# Simuler l'impact distributionnel d'une augmentation de la TVA sur les intrants
+# de la production avicole (aliment compose, poussins d'un jour, produits veterinaires)
+# en utilisant une approximation du transfert de prix.
 #
-# TRANSMISSION FORMULA:
-#   r_reform = alpha_pt * s_inputs * delta_vat_inputs
-#   where:
-#     delta_vat_inputs = 0.18  (0% -> 18%)
-#     s_inputs         = share of production costs in taxable inputs
-#     alpha_pt         = pass-through rate (consumer price elasticity)
+# APPROCHE :
+# Les intrants de production ne sont PAS observes dans l'EHCVM.
+# La reforme est modelisee via son effet sur le PRIX DU POULET observe.
+# Transmission: r_reform = alpha × s_inputs × delta_VAT_inputs
 #
-# THREE PARAMETER SCENARIOS:
-#   S1 Conservative : alpha=0.50, s=0.65  -> ~5.9% price impact
-#   S2 Central      : alpha=0.70, s=0.75  -> ~9.5% price impact
-#   S3 Full         : alpha=1.00, s=0.89  -> ~16.0% price impact
+# TROIS SCENARIOS :
+# - Conservateur (S1): alpha=0.50, s_inputs=0.65
+# - Central     (S2): alpha=0.70, s_inputs=0.75
+# - Complet    (S3): alpha=1.00, s_inputs=0.89
 #
-# PRODUCTS CONCERNED:
-#   codpr 34 : Viande de poulet  (primary channel)
-#   codpr 33 : Poulet sur pied   (secondary)
-#   codpr 35 : Autres volailles  (secondary)
+# SORTIES :
+# - Part budgetaire du poulet par decile
+# - Taux de TVA effectif implicite par decile
+# - Charge TVA additionnelle par decile
+# - Gain de recette fiscale estime
+# - Indice de Kakwani (progressivite)
 #
-# INPUT:  SILVER/01/conso_clean.parquet
-# OUTPUT: TABLES/10/10_*.xlsx
-#         SILVER/06/reform_chicken_inputs.parquet
+# ENTREE :  SILVER/01/conso_clean.parquet
+# SORTIE :  SILVER/10/reform_chicken_inputs.parquet
+#           TABLES/10/10_*.xlsx
 #
-# AUTHOR: CAE — ANStat (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : CAE — ANStat (Avril 2026)
+# Rewrite R : rewrite-r branch
 
 run_reform_chicken <- function(paths) {
 

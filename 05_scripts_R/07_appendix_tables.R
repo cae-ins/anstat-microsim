@@ -1,24 +1,24 @@
 # 07_appendix_tables.R
 #
-# OBJECTIVE:
-# Supplementary tables for the appendix and robustness documentation.
+# OBJECTIF :
+# Tableaux supplementaires pour l'annexe et la documentation de robustesse.
 #
-# CONTENT:
-# - Extended decile and quintile profiles
-# - VAT decomposition by COICOP category
-# - Regional and rural/urban breakdowns
-# - Basic data-quality diagnostics
+# CONTENU :
+# - Profils deciles et quintiles etendus
+# - Decomposition de la TVA par categorie COICOP
+# - Repartitions regionales et rural/urbain
+# - Diagnostiques basiques de qualite des donnees
 #
-# INPUT:  SILVER/04/fiscal_data_analysis_ready.parquet
-#         SILVER/01/conso_clean.parquet
-# OUTPUT: TABLES/07/07_*.xlsx
+# ENTREE :  SILVER/04/fiscal_data_analysis_ready.parquet
+#           SILVER/01/conso_clean.parquet
+# SORTIE :  TABLES/07/07_*.xlsx
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : Armand Kouakou Djaha, MSc (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_appendix_tables <- function(paths) {
 
-  message(">>> STEP 7: Appendix tables")
+  message(">>> ETAPE 7 : Tableaux d'annexe")
 
   hh <- load_parquet(
     file.path(paths$SILVER, "04", "fiscal_data_analysis_ready.parquet")

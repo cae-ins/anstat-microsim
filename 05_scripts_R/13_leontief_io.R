@@ -1,8 +1,8 @@
 # =============================================================================
-# Étape 13 — Modèle de prix de Leontief : TVA enchâssée via matrice I/O
+# Etape 13 — Modele de prix de Leontief : TVA enchasee via matrice I/O
 # OECD ICIO 2023 (CIV 2020) × EHCVM 2021
 # =============================================================================
-library(readxl); library(dplyr); library(readr)
+library(readxl); library(dplyr); library(tidyr)
 
 source("05_scripts_R/00_setup.R")
 
@@ -11,7 +11,7 @@ dir.create(SILVER_13, showWarnings = FALSE)
 
 # ── 1. MATRICE I/O ────────────────────────────────────────────────────────────
 io_raw <- read.csv(
-  file.path(ROOT, "01_data_sources", "IO", "CIV2020ttl.csv"),
+  source_file_path("IO", "CIV2020ttl.csv", label = "Matrice ICIO CSV"),
   row.names = 1, check.names = FALSE
 )
 
@@ -28,14 +28,17 @@ rownames(A) <- sect_cols; colnames(A) <- sect_cols
 stopifnot(max(Re(eigen(A)$values)) < 1)   # condition de Hawkins-Simon
 
 # ── 2. VECTEUR t PAR SECTEUR ──────────────────────────────────────────────────
-conc <- read_csv(
-  file.path(ROOT, "01_data_sources", "concordance_codpr_ICIO.csv"),
-  show_col_types = FALSE
+conc <- read_source_csv(
+  path_parts = c("concordance_codpr_ICIO.csv"),
+  .label = "Concordance codpr-ICIO",
+  .required_cols = c("codpr", "libelle", "secteur_ICIO")
 ) %>% filter(secteur_ICIO != "hors_champ")
 
-tva <- read_excel(
-  file.path(ROOT, "01_data_sources", "COPR_EHCVM_TVA_renseigne.xlsx"),
-  sheet = "TVA_detail"
+tva <- read_source_excel(
+  path_parts = c("COPR_EHCVM_TVA_renseigne.xlsx"),
+  sheet = "TVA_detail",
+  .label = "Classeur de mapping TVA",
+  .required_cols = c("code", "TVA_statutaire")
 ) %>%
   rename(codpr = code) %>%
   mutate(taux_tva = case_when(
@@ -45,7 +48,7 @@ tva <- read_excel(
   )) %>%
   select(codpr, taux_tva)
 
-# Taux moyen observé par secteur (depuis les codpr)
+# Taux moyen observe par secteur (depuis les codpr)
 t_obs <- conc %>%
   left_join(tva, by = "codpr") %>%
   group_by(secteur_ICIO) %>%
@@ -102,10 +105,13 @@ print(result %>% arrange(desc(tau_total)) %>% head(20))
 
 # ── 5. INCIDENCE AU NIVEAU MÉNAGE ─────────────────────────────────────────────
 # Charger données item-niveau (hhid × codpr)
-conso <- arrow::read_parquet(
-  file.path(SILVER, "01", "conso_clean.parquet")
-) %>%
+conso <- load_parquet(file.path(SILVER, "01", "conso_clean.parquet")) %>%
   select(hhid, hhweight, region, milieu, codpr, depan, depan_w)
+assert_required_columns(
+  conso,
+  c("hhid", "hhweight", "region", "milieu", "codpr", "depan_w"),
+  object_name = "conso_clean.parquet"
+)
 
 # Joindre τ par codpr — les produits sans mapping (hors_champ) reçoivent 0
 tau_codpr <- result %>% select(codpr, t_indirect, tau_total)
@@ -132,8 +138,11 @@ hh_io <- conso_io %>%
   )
 
 # Charger fiscal_data (step 03) et fusionner
-fiscal <- arrow::read_parquet(
-  file.path(SILVER, "03", "fiscal_data.parquet")
+fiscal <- load_parquet(file.path(SILVER, "03", "fiscal_data.parquet"))
+assert_required_columns(
+  fiscal,
+  c("hhid", "hhweight", "conso_w", "vat_w", "eff_vat_w", "consumable_income"),
+  object_name = "fiscal_data.parquet"
 )
 
 fiscal_io <- fiscal %>%
@@ -164,8 +173,8 @@ print(
 )
 
 # ── 6. SAUVEGARDE ─────────────────────────────────────────────────────────────
-write_csv(tau_df,    file.path(SILVER_13, "leontief_tau_secteur.csv"))
-write_csv(result,    file.path(SILVER_13, "leontief_tau_codpr.csv"))
-arrow::write_parquet(fiscal_io, file.path(SILVER_13, "fiscal_data_io.parquet"))
+readr::write_csv(tau_df,    file.path(SILVER_13, "leontief_tau_secteur.csv"))
+readr::write_csv(result,    file.path(SILVER_13, "leontief_tau_codpr.csv"))
+save_parquet(fiscal_io, file.path(SILVER_13, "fiscal_data_io.parquet"))
 
 cat("\nÉtape 13 terminée — outputs dans", SILVER_13, "\n")

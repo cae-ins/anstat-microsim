@@ -1,24 +1,24 @@
 # 00_master.R
-# Master script — runs the full pipeline.
+# Script maitre — execute le pipeline complet.
 #
-# Inspired by the INES (Microsimulation INSEE) enchainement.R architecture:
-# each step is a named function; the orchestrator iterates through a
-# data-frame of steps and calls them sequentially.
+# Inspire de l'architecture INES (Microsimulation INSEE) enchainement.R :
+# chaque etape est une fonction nommee ; l'orchestrateur itere a travers un
+# data-frame des etapes et les appelle sequentiellement.
 #
-# USAGE:
-#   # From the project root directory in R:
+# UTILISATION:
+#   # Depuis le dossier racine du projet en R:
 #   source("05_scripts_R/00_master.R")
 #
-#   # Or run a subset of steps:
+#   # Ou executer un sous-ensemble d'etapes:
 #   source("05_scripts_R/00_master.R"); lance_pipeline(1, 5)
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata pipeline)
-# R rewrite: rewrite-r branch
+# AUTEUR: Armand Kouakou Djaha, MSc (pipeline Stata original)
+# Traduction R: rewrite-r branch
 
-# ── Setup (paths, packages, utility functions) ────────────────────────────────
+# ── Configuration (chemins, packages, fonctions utilitaires) ───────────────────────────────
 source("05_scripts_R/00_setup.R")
 
-# ── Source all step modules ────────────────────────────────────────────────────
+# ── Charger tous les modules d'etapes ────────────────────────────────────────────────────
 step_files <- c(
   "01_prepare_data.R",
   "02_mapping_tax.R",
@@ -39,24 +39,24 @@ for (f in step_files) {
   source(file.path(CODE, f))
 }
 
-# ── Pipeline definition (inspired by INES enchainement.R) ────────────────────
-# data.frame with one row per step: id, description, function name
+# ── Definition du pipeline ( Inspire de INES enchainement.R) ────────────────────
+# data.frame avec une ligne par etape : id, description, nom de fonction
 enchainement <- tibble::tibble(
   etape_id    = 1:13,
   description = c(
-    "Pr\u00e9paration des donn\u00e9es EHCVM",
+    "Preparation des donnees EHCVM",
     "Mapping TVA par produit",
     "Calcul de l'incidence TVA",
-    "Analyse distributive (d\u00e9ciles, quintiles, milieu, r\u00e9gion)",
-    "Indices de progressivit\u00e9 (Gini, Kakwani, Reynolds-Smolensky)",
-    "Sensibilit\u00e9 \u2014 sc\u00e9narios de taxation (alpha strict / milieu / d\u00e9cile)",
-    "Sensibilit\u00e9 \u2014 classements distributifs (total / pc / AE1 / AE2)",
+    "Analyse distributive (deciles, quintiles, milieu, region)",
+    "Indices de progressivite (Gini, Kakwani, Reynolds-Smolensky)",
+    "Sensibilite — scenarios de taxation (alpha strict / milieu / decile)",
+    "Sensibilite — classements distributifs (total / pc / AE1 / AE2)",
     "Tableaux annexes",
-    "Figures analytiques (fig1\u2013fig4)",
-    "D\u00e9terminants de la TVA effective (r\u00e9gressions OLS)",
-    "Simulation r\u00e9forme intrants avicoles",
-    "Figures r\u00e9forme (figR1\u2013figR4)",
-    "Incidence sur la pauvret\u00e9 (FGT) \u2014 TVA et r\u00e9forme avicole"
+    "Figures analytiques (fig1-fig4)",
+    "Determinants de la TVA effective (regressions OLS)",
+    "Simulation reforme intrants avicoles",
+    "Figures reforme (figR1-figR4)",
+    "Incidence sur la povrete (FGT) — TVA et reforme avicole"
   ),
   fonction = c(
     "prepare_data",
@@ -75,7 +75,7 @@ enchainement <- tibble::tibble(
   )
 )
 
-# ── Paths object (passed to each step function) ───────────────────────────────
+# ── Objet paths (passe a chaque fonction d'etape) ───────────────────────────────
 paths <- list(
   ROOT   = ROOT,
   DATA   = DATA,
@@ -87,10 +87,26 @@ paths <- list(
   FIGS   = FIGS
 )
 
-# ── Orchestrator ──────────────────────────────────────────────────────────────
+# ── Orchestrateur ──────────────────────────────────────────────────────────────
 lance_pipeline <- function(premiere_etape = 1,
                            derniere_etape  = 13,
                            verbose         = TRUE) {
+
+  stopifnot(
+    is.numeric(premiere_etape), length(premiere_etape) == 1,
+    is.numeric(derniere_etape),  length(derniere_etape) == 1
+  )
+
+  premiere_etape <- as.integer(premiere_etape)
+  derniere_etape <- as.integer(derniere_etape)
+
+  max_step <- max(enchainement$etape_id)
+  if (premiere_etape < 1 || derniere_etape > max_step || premiere_etape > derniere_etape) {
+    stop(sprintf(
+      "Plage d'etapes invalide : [%d, %d]. Plage valide : [1, %d].",
+      premiere_etape, derniere_etape, max_step
+    ))
+  }
 
   steps <- dplyr::filter(enchainement,
                           etape_id >= premiere_etape,
@@ -101,7 +117,7 @@ lance_pipeline <- function(premiere_etape = 1,
 
     if (verbose) {
       message(sprintf(
-        "\n\u2550\u2550\u2550\u2550\u2550\u2550 \u00c9tape %02d / %02d : %s",
+        "\n===== Etape %02d / %02d : %s",
         step$etape_id, max(steps$etape_id), step$description
       ))
     }
@@ -109,7 +125,7 @@ lance_pipeline <- function(premiere_etape = 1,
     fn <- tryCatch(
       get(step$fonction, envir = .GlobalEnv),
       error = function(e) {
-        stop(sprintf("Function '%s' not found. Did all step files load?",
+        stop(sprintf("Fonction '%s' non trouvee. Tous les fichiers d'etapes ont-ils ete charges?",
                      step$fonction))
       }
     )
@@ -117,7 +133,7 @@ lance_pipeline <- function(premiere_etape = 1,
     tryCatch(
       fn(paths),
       error = function(e) {
-        message(sprintf("\u274c ERREUR \u00e0 l'\u00e9tape %d (%s):\n  %s",
+        message(sprintf("\n✘ ERREUR a l'etape %d (%s):\n  %s",
                         step$etape_id, step$fonction,
                         conditionMessage(e)))
         stop(e)
@@ -125,18 +141,18 @@ lance_pipeline <- function(premiere_etape = 1,
     )
 
     if (verbose) {
-      message(sprintf("\u2713 \u00c9tape %02d termin\u00e9e", step$etape_id))
+      message(sprintf("\n✓ Etape %02d terminee", step$etape_id))
     }
   }
 
   if (verbose) {
-    message("\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550")
-    message(" PIPELINE TERMIN\u00c9 AVEC SUCC\u00c8S")
-    message("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550")
+    message("\n==================================================")
+    message(" PIPELINE TERMINE AVEC SUCCES")
+    message("==================================================")
   }
 
   invisible(NULL)
 }
 
-# ── Run ────────────────────────────────────────────────────────────────────────
+# ── Execution ────────────────────────────────────────────────────────────────────────
 lance_pipeline(premiere_etape = 1, derniere_etape = 13)

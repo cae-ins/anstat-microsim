@@ -1,41 +1,41 @@
 # 04_analysis.R
 #
-# OBJECTIVE:
-# Produce CEQ-style distributive results for VAT incidence.
-# Rank households by consumption, compute decile/quintile/milieu/region profiles.
+# OBJECTIF :
+# Produire des resultats distributifs de type CEQ pour l'incidence de la TVA.
+# Ranger les menages par consommation, calculer les profils par decile/quintile/milieu/region.
 #
-# INPUT:  SILVER/03/fiscal_data.parquet
-# OUTPUT: TABLES/04/04_*.xlsx
-#         SILVER/04/results_by_decile.parquet
-#         SILVER/04/fiscal_data_analysis_ready.parquet
+# ENTREE :  SILVER/03/fiscal_data.parquet
+# SORTIE :  TABLES/04/04_*.xlsx
+#           SILVER/04/results_by_decile.parquet
+#           SILVER/04/fiscal_data_analysis_ready.parquet
 #
-# AUTHOR: Armand Kouakou Djaha, MSc (original Stata)
-# R rewrite: rewrite-r branch
+# AUTEUR : Armand Kouakou Djaha, MSc (Stata original)
+# Rewrite R : rewrite-r branch
 
 run_analysis <- function(paths) {
 
-  message(">>> STEP 4: Distributive analysis")
+  message(">>> ETAPE 4 : Analyse distributive")
 
   hh <- load_parquet(file.path(paths$SILVER, "03", "fiscal_data.parquet"))
 
   # ── Validation ───────────────────────────────────────────────────────────
   stopifnot(
-    "Missing hhid"     = !anyNA(hh$hhid),
-    "Missing hhweight" = !anyNA(hh$hhweight),
-    "Missing conso_w"  = !anyNA(hh$conso_w),
-    "Missing vat_w"    = !anyNA(hh$vat_w),
-    "conso must be > 0" = all(hh$conso > 0),
-    "vat must be >= 0"  = all(hh$vat >= 0)
+    "hhid manquant"     = !anyNA(hh$hhid),
+    "hhweight manquant" = !anyNA(hh$hhweight),
+    "conso_w manquant"  = !anyNA(hh$conso_w),
+    "vat_w manquant"    = !anyNA(hh$vat_w),
+    "conso doit etre > 0" = all(hh$conso > 0),
+    "vat doit etre >= 0"  = all(hh$vat >= 0)
   )
 
-  # ── Rank households ───────────────────────────────────────────────────────
+  # ── Classement des menages ───────────────────────────────────────────────
   hh <- hh %>%
     dplyr::mutate(
       decile   = weighted_ntile(conso_w, hhweight, n = 10),
       quintile = weighted_ntile(conso_w, hhweight, n = 5)
     )
 
-  # ── Results by decile ─────────────────────────────────────────────────────
+  # ── Resultats par decile ─────────────────────────────────────────────────
   by_decile <- hh %>%
     dplyr::group_by(decile) %>%
     dplyr::summarise(
@@ -51,7 +51,7 @@ run_analysis <- function(paths) {
   save_parquet(by_decile,
                file.path(paths$SILVER, "04", "results_by_decile.parquet"))
 
-  # ── Results by quintile ───────────────────────────────────────────────────
+  # ── Resultats par quintile ───────────────────────────────────────────────
   by_quintile <- hh %>%
     dplyr::group_by(quintile) %>%
     dplyr::summarise(
@@ -65,7 +65,7 @@ run_analysis <- function(paths) {
   export_excel(by_quintile,
                file.path(paths$TABLES, "04", "04_main_results_by_quintile.xlsx"))
 
-  # ── Results by milieu (urban/rural) ──────────────────────────────────────
+  # ── Resultats par milieu (urbain/rural) ─────────────────────────────────
   by_milieu <- hh %>%
     dplyr::group_by(milieu) %>%
     dplyr::summarise(
@@ -79,7 +79,7 @@ run_analysis <- function(paths) {
   export_excel(by_milieu,
                file.path(paths$TABLES, "04", "04_results_by_milieu.xlsx"))
 
-  # ── Results by region ─────────────────────────────────────────────────────
+  # ── Resultats par region ─────────────────────────────────────────────────
   by_region <- hh %>%
     dplyr::group_by(region) %>%
     dplyr::summarise(
@@ -94,11 +94,11 @@ run_analysis <- function(paths) {
   export_excel(by_region,
                file.path(paths$TABLES, "04", "04_results_by_region.xlsx"))
 
-  # ── Save enriched dataset ─────────────────────────────────────────────────
+  # ── Sauvegarder le jeu de donne enrichi ──────────────────────────────────
   save_parquet(hh,
                file.path(paths$SILVER, "04", "fiscal_data_analysis_ready.parquet"))
 
-  message("  Effective VAT by decile:")
+  message("  TVA effective par decile :")
   print(
     hh %>%
       dplyr::group_by(decile) %>%

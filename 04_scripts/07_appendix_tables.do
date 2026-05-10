@@ -1,31 +1,30 @@
 ********************************************************************************
 * 07_appendix_tables.do
 *
-* OBJECTIVE:
-* Produce supplementary tables for appendix and robustness documentation.
+* OBJECTIF :
+* Produire les tableaux supplementaires pour l'annexe et la documentation de robustesse.
 *
-* CONTENT:
-* - Full distribution statistics
-* - Detailed decile and quintile profiles
-* - VAT decomposition by COICOP
-* - Regional and rural/urban breakdowns
-* - Diagnostics for data quality
-*AUTHOR: Armand Kouakou Djaha, MSc
-********************************************************************************
+* CONTENU :
+* - Statistiques completes de distribution
+* - Profils deciles et quintiles detailles
+* - Decomposition TVA par COICOP
+* - Decompositions regionales et rural/urbain
+* - Diagnostics pour la qualite des donnees
+ ********************************************************************************
 
 use "$SILVER/04/fiscal_data_analysis_ready.dta", clear
 
-********************************************************************************
-* STEP 1 — Full distribution diagnostics
-********************************************************************************
+ ********************************************************************************
+* ETAPE 1 — Diagnostics complets de distribution
+ ********************************************************************************
 
 sum conso conso_w vat vat_w eff_vat eff_vat_w, detail
 
-* Export summary manually if needed
+* Exporter le resume manuellement si necessaire
 
-********************************************************************************
-* STEP 2 — Detailed decile profile (extended)
-********************************************************************************
+ ********************************************************************************
+* ETAPE 2 — Profil decile detendu (etendu)
+ ********************************************************************************
 
 preserve
 collapse ///
@@ -42,9 +41,9 @@ gen vat_share = vat_sum / total_vat
 export excel using "$TABLES/07/07_decile_detailed.xlsx", firstrow(variables) replace
 restore
 
-********************************************************************************
-* STEP 3 — Detailed quintile profile
-********************************************************************************
+ ********************************************************************************
+* ETAPE 3 — Profil quintile detendu
+ ********************************************************************************
 
 *xtile quintile = conso_w [pw=hhweight], n(5)
 
@@ -60,13 +59,13 @@ gen vat_share = vat_sum / total_vat
 export excel using "$TABLES/07/07_quintile_detailed.xlsx", firstrow(variables) replace
 restore
 
-********************************************************************************
-* STEP 4 — VAT decomposition by COICOP
-********************************************************************************
+ ********************************************************************************
+* ETAPE 4 — Decomposition TVA par COICOP
+ ********************************************************************************
 
 use "$SILVER/01/conso_clean.dta", clear
 
-* Ensure VAT computed at item level
+* S'assurer que la TVA est calculee au niveau item
 gen vat_item_w = depan_w * r_vat_official
 
 preserve
@@ -80,9 +79,9 @@ gen vat_rate_coicop = vat_w / conso_w
 export excel using "$TABLES/07/07_vat_by_coicop.xlsx", firstrow(variables) replace
 restore
 
-********************************************************************************
-* STEP 5 — Regional breakdown (extended)
-********************************************************************************
+ ********************************************************************************
+* ETAPE 5 — Decomposition regionale (etendue)
+ ********************************************************************************
 
 use "$SILVER/04/fiscal_data_analysis_ready.dta", clear
 
@@ -97,9 +96,9 @@ gsort -eff_vat
 export excel using "$TABLES/07/07_region_detailed.xlsx", firstrow(variables) replace
 restore
 
-********************************************************************************
-* STEP 6 — Rural vs Urban (extended)
-********************************************************************************
+ ********************************************************************************
+* ETAPE 6 — Rural vs Urbain (etendu)
+ ********************************************************************************
 
 preserve
 collapse ///
@@ -110,22 +109,22 @@ collapse ///
 export excel using "$TABLES/07/07_milieu_detailed.xlsx", replace
 restore
 
-********************************************************************************
-* STEP 7 — Diagnostics: data quality
-********************************************************************************
+ ********************************************************************************
+* ETAPE 7 — Diagnostics : qualite des donnees
+ ********************************************************************************
 
-* Number of items per household
+* Nombre d'items par menage
 sum n_items, detail
 
-* Extreme VAT rates
+* Taux TVA extremes
 sum eff_vat, detail
 
-* Identify potential outliers
+* Identifier les valeurs aberrantes potentielles
 gen flag_high_vat = eff_vat > 0.2
 tab flag_high_vat
 
-********************************************************************************
-* END
-********************************************************************************
+ ********************************************************************************
+* FIN
+ ********************************************************************************
 
-di as result ">>> Appendix tables successfully generated"
+di as result ">>> Tableaux d'annexe generes avec succes"

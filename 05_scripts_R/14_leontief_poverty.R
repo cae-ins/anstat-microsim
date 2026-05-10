@@ -19,7 +19,7 @@
 #          TABLES/14/14_04_nouveaux_pauvres_io.xlsx
 #          FIGS/fig_poverty_io_impact.png
 # =============================================================================
-library(dplyr); library(tidyr); library(ggplot2); library(readr)
+library(dplyr); library(tidyr); library(ggplot2)
 
 source("05_scripts_R/00_setup.R")
 
@@ -28,13 +28,23 @@ dir.create(SILVER_14, showWarnings = FALSE)
 dir.create(file.path(TABLES, "14"), showWarnings = FALSE)
 
 # ── 1. CHARGEMENT ─────────────────────────────────────────────────────────────
-hh_sens <- arrow::read_parquet(
+hh_sens <- load_parquet(
   file.path(SILVER, "06", "fiscal_sensitivity_taxation.parquet")
 )
+assert_required_columns(
+  hh_sens,
+  c("hhid", "hhweight", "milieu", "region", "decile", "vat_strict", "vat_s2", "vat_s3"),
+  object_name = "fiscal_sensitivity_taxation.parquet"
+)
 
-hh_io <- arrow::read_parquet(
+hh_io <- load_parquet(
   file.path(SILVER, "13", "fiscal_data_io.parquet")
 ) %>% select(hhid, vat_emb)
+assert_required_columns(
+  hh_io,
+  c("hhid", "vat_emb"),
+  object_name = "fiscal_data_io.parquet"
+)
 
 welfare <- load_raw_dta(
   "ehcvm_welfare_2b_CIV2021.dta",
@@ -212,7 +222,7 @@ fig <- ggplot(fig_data,
 export_fig(fig, file.path(FIGS, "fig_poverty_io_impact.png"))
 
 # ── 7. SAUVEGARDE PARQUET ─────────────────────────────────────────────────────
-arrow::write_parquet(
+save_parquet(
   hh %>% select(hhid, hhweight, milieu, region, decile,
                 pcexp_pre, pcexp_direct_s1, pcexp_io_s1,
                 poor_pre, poor_direct_s1, poor_io_s1,
