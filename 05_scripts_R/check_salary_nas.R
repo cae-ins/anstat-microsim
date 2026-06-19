@@ -1,0 +1,7 @@
+library(haven)
+data <- read_dta("01_data_sources/Datain/Menage/s04_me_CIV2021.dta", col_select = c("s04q43", "s04q31", "s04q42", "s04q38"))
+cat("Total obs:", nrow(data), "\n")
+cat("NA in s04q43 (salary):", sum(is.na(data$s04q43)), "\n")
+cat("Formal (bulletin s04q42==1):", sum(data$s04q42 == 1, na.rm=TRUE), "\n")
+cat("Formal with Salary missing:", sum(data$s04q42 == 1 & is.na(data$s04q43), na.rm=TRUE), "\n")
+cat("Formal with Salary reported:", sum(data$s04q42 == 1 & !is.na(data$s04q43), na.rm=TRUE), "\n")
