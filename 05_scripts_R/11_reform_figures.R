@@ -56,7 +56,7 @@ run_reform_figures <- function(paths) {
     dplyr::select(decile, delta_eff_s1, delta_eff_s2, delta_eff_s3) %>%
     tidyr::pivot_longer(-decile, names_to = "scenario", values_to = "delta") %>%
     dplyr::mutate(
-      label = dplyr::case_match(scenario,
+      label = dplyr::recode_values(scenario,
         "delta_eff_s1" ~ "S1 Conservative (\u03b1=0.50, s=0.65) \u2014 ~5.9% price impact",
         "delta_eff_s2" ~ "S2 Central (\u03b1=0.70, s=0.75) \u2014 ~9.5% price impact",
         "delta_eff_s3" ~ "S3 Full pass-through (\u03b1=1.00, s=0.89) \u2014 ~16.0% price impact"
@@ -100,7 +100,7 @@ run_reform_figures <- function(paths) {
     dplyr::select(decile, eff_vat_base, eff_vat_s2) %>%
     tidyr::pivot_longer(-decile, names_to = "period", values_to = "rate") %>%
     dplyr::mutate(
-      label = dplyr::case_match(period,
+      label = dplyr::recode_values(period,
         "eff_vat_base" ~ "Baseline (pre-reform)",
         "eff_vat_s2"   ~ "Post-reform \u2014 S2 Central (\u03b1=0.70)"
       ),

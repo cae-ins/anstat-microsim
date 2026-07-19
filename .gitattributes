@@ -1,0 +1,2 @@
+# Treat compiled manuscripts as binary artifacts.
+*.pdf binary

@@ -1,0 +1,10 @@
+ID,severity,summary,classification,manuscript_location,code_or_output
+R1.1,major,Paramètres S3,Addressed,"§4.3; annexe C; tableau 18","utils/vat_scenarios.R; 06_03_vat_informality_parameters.xlsx"
+R1.2,major,TVA incorporée et droit à déduction,Addressed,"§4.5-4.6; tableau 7","13b_leontief_local_io.R; 13_07_legal_deduction_sensitivity.xlsx"
+R1.3,major,Libellé du contrefactuel à 9 %,Addressed,"§4.15; §6.2; tableau 15","15_reform_vat_simulation.R"
+R1.4,major,PSSN déclarés d'abord,Addressed,"§4.9; §5.6","18_transfers.R; 18_02_coverage_targeting.xlsx"
+R1.5,major,Scénarios d'impôts directs,Addressed,"§4.8; tableau 10","16_direct_taxes.R; 16_07_robustness_diagnostics.xlsx"
+R1.6,technical,Convention additive de c,Addressed,"§4.6","DT_CEQ_CIV2021.tex"
+R1.7,technical,Dénominateur de TVA directe,Addressed,"§4.3 et §4.6","DT_CEQ_CIV2021.tex"
+R1.8,technical,Couche de TVA dans les accises,Addressed,"§4.7","17_indirect_other.R; DT_CEQ_CIV2021.tex"
+R1.9,technical,Unités des identités CEQ,Addressed,"§4.2","22_income_concepts.R; DT_CEQ_CIV2021.tex"

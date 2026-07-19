@@ -1,4 +1,4 @@
-setwd("C:/Users/f.migone/Desktop/projects/actif/anstat-microsim")
+if (!file.exists("05_scripts_R/00_master.R")) stop("Exécuter ce script depuis la racine du dépôt.")
 source("05_scripts_R/00_setup.R")
 paths <- list(ROOT=ROOT, DATA=DATA, CODE=CODE,
               SILVER=SILVER, GOLD=GOLD, LOGS=LOGS,

@@ -4,14 +4,14 @@
 # Calculer l'incidence de la TVA au niveau menage en utilisant les microdonnees EHCVM.
 #
 # APPROCHE :
-# 1. Calculer la TVA au niveau item: vat_item = depan × r_vat_official
+# 1. Extraire la TVA d'une depense TTC: vat_item = depan x r / (1 + r)
 # 2. Agreger au niveau menage (somme a travers les produits)
 # 3. Calculer le taux TVA effectif: eff_vat = vat / conso
-# 4. Construire les concepts de revenu proxy CEQ: market_income, consumable_income
+# 4. Ancrer le scenario PDI sur yd_pc = pcexp et construire yc_pc_vat
 #
 # HYPOTHESES :
 # - Transfert complet sur les consommateurs (incidence statique)
-# - Transactions marchandes uniquement (modep == 1), applique a l'etape 01
+# - Achats et valeurs d'usage retenus comme dans le do-file Banque mondiale
 #
 # ENTREE:  SILVER/01/conso_clean.parquet  (niveau item: hhid × produit)
 # SORTIE: SILVER/03/fiscal_data.parquet  (niveau menage)
@@ -28,8 +28,9 @@ compute_taxes <- function(paths) {
   # ── TVA au niveau item ─────────────────────────────────────────────────────
   df <- df %>%
     dplyr::mutate(
-      vat_item   = depan   * r_vat_official,
-      vat_item_w = depan_w * r_vat_official
+      vat_content_share = r_vat_official / (1 + r_vat_official),
+      vat_item   = depan   * vat_content_share,
+      vat_item_w = depan_w * vat_content_share
     )
 
   # ── Agreger au niveau menage ─────────────────────────────────────────
@@ -39,6 +40,7 @@ compute_taxes <- function(paths) {
     dplyr::group_by(hhid) %>%
     dplyr::summarise(
       year     = dplyr::first(year),
+      grappe   = dplyr::first(grappe),
       hhweight = dplyr::first(hhweight),
       region   = dplyr::first(region),
       milieu   = dplyr::first(milieu),
@@ -65,10 +67,23 @@ compute_taxes <- function(paths) {
     )
 
   # ── Concepts proxy CEQ ─────────────────────────────────────────────
+  welfare <- load_raw_dta(
+    'ehcvm_welfare_2b_CIV2021.dta',
+    col_select = c('hhid', 'pcexp', 'zref', 'hhsize', 'def_spa', 'def_temp')
+  )
+
   hh <- hh %>%
+    dplyr::left_join(welfare, by = 'hhid') %>%
     dplyr::mutate(
-      market_income     = conso_w,
-      consumable_income = conso_w - vat_w
+      pcweight = hhweight * hhsize,
+      strata = paste(as.character(region), as.character(milieu), sep = '_'),
+      yd_pc = pcexp,
+      yd_hh = pcexp * hhsize,
+      vat_real = vat * def_spa,
+      vat_w_real = vat_w * def_spa,
+      yc_pc_vat = yd_pc - vat_w_real / hhsize,
+      disposable_income = yd_hh,
+      consumable_income = yd_hh - vat_w_real
     )
 
   # ── Sauvegarder ─────────────────────────────────────────────────

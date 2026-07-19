@@ -7,7 +7,7 @@
 # Fig 1 — Taux TVA effectif par decile : trois scenarios d'informelite
 # Fig 2 — Courbes de concentration : trois scenarios + Lorentz + ligne d'egalite
 # Fig 3 — Part de la TVA par categorie COICOP (descriptif)
-# Fig 4 — Profils Alpha par decile pour les categories COICOP cles (calibration IEC)
+# Fig 4 — Profils Alpha par decile pour les categories COICOP cles (profil IEC exogene)
 #
 # INPUT:  TABLES/06/06_01_decile_effective_rates_by_scenario.xlsx
 #         SILVER/06/fiscal_sensitivity_taxation.parquet
@@ -34,10 +34,10 @@ run_figures <- function(paths) {
       values_to = "rate"
     ) %>%
     dplyr::mutate(
-      label = dplyr::case_match(scenario,
+      label = dplyr::recode_values(scenario,
         "rate_strict"    ~ "Strict (\u03b1=1) \u2014 theoretical upper bound",
         "rate_s2_milieu" ~ "S2: CEI \u00d7 milieu urbain/rural (Bachas et al. 2024)",
-        "rate_s3_iec"    ~ "S3: CEI \u00d7 decile \u2014 IEC calibrated"
+        "rate_s3_iec"    ~ "S3: CEI \u00d7 decile \u2014 exogenous IEC profile"
       ),
       label = factor(label, levels = unique(label))
     )
@@ -58,7 +58,7 @@ run_figures <- function(paths) {
       x        = "Consumption decile",
       y        = "Effective VAT rate (VAT / consumption)",
       color    = NULL, linetype = NULL,
-      caption  = "Source: EHCVM 2021. Alpha calibration: Bachas, Gadenne & Jensen (2024, RestUD 91(5))."
+      caption  = "Source: EHCVM 2021. Exogenous alpha profiles inspired by Bachas, Gadenne & Jensen (2024, RestUD 91(5)); not estimated on EHCVM."
     ) +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
@@ -88,7 +88,7 @@ run_figures <- function(paths) {
     dplyr::select(cum_pop, cum_conso, cum_vat_strict, cum_vat_s2, cum_vat_s3) %>%
     tidyr::pivot_longer(-cum_pop, names_to = "curve", values_to = "cum_share") %>%
     dplyr::mutate(
-      label = dplyr::case_match(curve,
+      label = dplyr::recode_values(curve,
         "cum_conso"      ~ "Lorenz \u2014 consumption",
         "cum_vat_strict" ~ "Concentration \u2014 Strict (\u03b1=1)",
         "cum_vat_s2"     ~ "Concentration \u2014 S2 (CEI \u00d7 milieu)",
@@ -140,13 +140,13 @@ run_figures <- function(paths) {
     dplyr::filter(!coicop_num %in% c(98, 99)) %>%
     dplyr::mutate(
       vat_share = vat_w / sum(vat_w) * 100,
-      coicop_label = dplyr::case_match(coicop_num,
+      coicop_label = dplyr::recode_values(coicop_num,
         1  ~ "Food/bev",    2  ~ "Alcohol/tob", 3  ~ "Clothing",
         4  ~ "Housing",     5  ~ "Furnishings", 6  ~ "Health",
         7  ~ "Transport",   8  ~ "Telecom",     9  ~ "Recreation",
         10 ~ "Education",   11 ~ "Restaurants", 12 ~ "Insurance",
         13 ~ "Personal care",
-        .default = "Other"
+        default = "Other"
       )
     ) %>%
     dplyr::arrange(dplyr::desc(vat_share)) %>%
@@ -173,7 +173,7 @@ run_figures <- function(paths) {
   export_fig(fig3, file.path(paths$FIGS, "fig3_vat_by_coicop.png"))
 
   # ── FIGURE 4 — Alpha profiles by decile: key categories ───────────────────
-  # Illustrates the IEC calibration for the 4 most analytically important
+  # Illustrates the exogenous IEC profile for the 4 most analytically important
   # COICOP categories driving the Kakwani sign reversal
   alpha_profiles <- tibble::tibble(
     decile     = 1:10,
@@ -187,7 +187,7 @@ run_figures <- function(paths) {
     ) %>%
     tidyr::pivot_longer(-decile, names_to = "cat", values_to = "alpha") %>%
     dplyr::mutate(
-      label = dplyr::case_match(cat,
+      label = dplyr::recode_values(cat,
         "alpha_food" ~ "Food/beverages (coicop=1)",
         "alpha_rest" ~ "Restaurants (coicop=11)",
         "alpha_care" ~ "Personal care (coicop=13)",

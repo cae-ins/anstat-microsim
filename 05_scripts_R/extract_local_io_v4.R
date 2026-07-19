@@ -14,11 +14,16 @@ make_numeric_matrix <- function(x) {
   mat
 }
 
-write_tre_outputs <- function(U_mat, R_mat, hfce_df, output_dir) {
+write_tre_outputs <- function(U_mat, R_mat, hfce_df, valuation_df, output_dir) {
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
   write.csv(as.data.frame(U_mat), file.path(output_dir, "use_matrix_2023.csv"))
   write.csv(as.data.frame(R_mat), file.path(output_dir, "resource_matrix_2023.csv"))
   write.csv(hfce_df, file.path(output_dir, "hfce_2023.csv"), row.names = FALSE)
+  write.csv(
+    valuation_df,
+    file.path(output_dir, "valuation_bridge_2023.csv"),
+    row.names = FALSE
+  )
 }
 
 extract_tre <- function(tre_path, basis, output_dir, legacy_output_dir = NULL) {
@@ -55,9 +60,33 @@ extract_tre <- function(tre_path, basis, output_dir, legacy_output_dir = NULL) {
   hfce[is.na(hfce)] <- 0
   hfce_df <- data.frame(code = prod_codes, name = prod_names, hfce = hfce)
 
-  write_tre_outputs(U_mat, R_mat, hfce_df, output_dir)
+  numeric_source_column <- function(column) {
+    value <- suppressWarnings(as.numeric(as.character(df[[column]][prod_rows])))
+    value[is.na(value)] <- 0
+    value
+  }
+
+  valuation_df <- data.frame(
+    code = prod_codes,
+    name = prod_names,
+    purchaser_total = numeric_source_column(3),
+    trade_margins = numeric_source_column(4),
+    transport_margins = numeric_source_column(5),
+    nondeductible_vat = numeric_source_column(6),
+    product_subsidies = numeric_source_column(7),
+    other_product_taxes = numeric_source_column(8),
+    export_taxes = numeric_source_column(9),
+    import_taxes = numeric_source_column(10),
+    basic_total = numeric_source_column(11),
+    imports = numeric_source_column(63),
+    domestic_output = rowSums(R_mat)
+  )
+
+  write_tre_outputs(U_mat, R_mat, hfce_df, valuation_df, output_dir)
   if (!is.null(legacy_output_dir)) {
-    write_tre_outputs(U_mat, R_mat, hfce_df, legacy_output_dir)
+    write_tre_outputs(
+      U_mat, R_mat, hfce_df, valuation_df, legacy_output_dir
+    )
   }
 
   data.frame(

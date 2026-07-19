@@ -6,8 +6,8 @@
 # ETAPES CLES :
 # 1. Charger les donnees de consommation EHCVM brutes
 # 2. Valider les identifiants
-# 3. Restreindre aux transactions marchandes (modep == 1)
-# 4. Winsoriser la depense au 99e percentile
+# 3. Retenir modep 1 et 4 comme dans la base TVA Banque mondiale
+# 4. Winsoriser par produit (P99 central, P95/P99.5 en sensibilite)
 # 5. Exporter les tableaux et figures diagnostiques
 # 6. Sauvegarder le jeu de donnees nettoy en parquet
 #
@@ -69,17 +69,21 @@ prepare_data <- function(paths) {
   # ── Restreindre aux transactions marchandes ────────────────────────────────
   # modep: 1=Achat 2=Autoconsommation 3=Don 4=Valeur d'usage 5=Loyer impute
   # La TVA s'applique uniquement aux transactions marchandes (methode CEQ)
-  message(">>> Restriction a la consommation basee sur le marche (modep == 1)")
-  df <- df %>% dplyr::filter(modep == 1)
+  message('>>> Assiette TVA Banque mondiale (modep 1 ou 4)')
+  df <- df %>% dplyr::filter(modep %in% c(1, 4))
   message(sprintf("  Lignes apres filtre: %s", format(nrow(df), big.mark = ",")))
 
   # ── Winsoriser au 99e percentile ─────────────────────────────────────────
-  p99  <- quantile(df$depan, 0.99, na.rm = TRUE)
-  df   <- df %>%
+  df <- df %>%
+    dplyr::group_by(codpr) %>%
     dplyr::mutate(
-      log_depan = log(depan),
-      depan_w   = pmin(depan, p99)
-    )
+      depan_raw   = depan,
+      log_depan   = log(pmax(depan, .Machine$double.eps)),
+      depan_w_p95 = pmin(depan, quantile(depan, 0.950, na.rm = TRUE)),
+      depan_w     = pmin(depan, quantile(depan, 0.990, na.rm = TRUE)),
+      depan_w_p995 = pmin(depan, quantile(depan, 0.995, na.rm = TRUE))
+    ) %>%
+    dplyr::ungroup()
 
   # ── Figure diagnostique: distribution log(depan) ───────────────────────────
   p_logdepan <- ggplot2::ggplot(df, ggplot2::aes(x = log_depan)) +
@@ -87,7 +91,7 @@ prepare_data <- function(paths) {
                              color = "white", alpha = 0.8) +
     ggplot2::labs(
       title   = "Distribution de log(depan) apres nettoyage",
-      subtitle = "Achats sur marche uniquement (modep == 1)",
+      subtitle = 'Assiette TVA : modep 1 ou 4',
       x = "log(depense annuelle par item, CFA)",
       y = "Effectif"
     ) +

@@ -8,7 +8,7 @@
 # TROIS SCENARIOS :
 # - Strict  (alpha=1) : pass-through complet, borne superieure theorique
 # - S2 (CEI × milieu) : alpha difféencié par COICOP × urbain/rural
-# - S3 (CEI × decile) : alpha lineaire selon le rang du decile, par COICOP (IEC calibree)
+# - S3 (CEI × decile) : alpha lineaire selon le rang du decile, par COICOP (profil IEC exogene)
 #
 # SORTIES :
 # - TVA au niveau menage pour chaque scenario
@@ -37,33 +37,24 @@ run_sensitivity_taxation <- function(paths) {
   )
 
   # S'assurer que coicop est numerique pour la jointure
+  welfare <- load_raw_dta(
+    'ehcvm_welfare_2b_CIV2021.dta',
+    col_select = c('hhid', 'pcexp', 'hhsize', 'def_spa', 'def_temp')
+  )
+
   df <- df %>%
+    dplyr::left_join(welfare, by = 'hhid') %>%
     dplyr::mutate(coicop_num = as.integer(as.character(coicop)))
 
   # ── SCENARIO 1 : Strict (alpha = 1) ──────────────────────────────────────
   df <- df %>%
-    dplyr::mutate(vat_item_strict = depan_w * r_vat_official)
+    dplyr::mutate(
+      vat_item_strict = depan_w * r_vat_official / (1 + r_vat_official)
+    )
 
   # ── SCENARIO 2 : CEI × milieu urbain/rural ──────────────────────────────
   # Source : Bachas et al. (2024) + World Bank WPS 10703 (2024)
-  alpha2_tbl <- tibble::tribble(
-    ~coicop_num, ~alpha_rural, ~alpha_urban,
-    1L,  0.18, 0.42,   # aliment/bev       : tres informel, fort ecart de milieu
-    2L,  0.55, 0.72,   # alcool/tabac: chaines plus formelles
-    3L,  0.28, 0.52,   # habillement       : melange boutiques formelles/informelles
-    4L,  0.68, 0.84,   # logement/util.  : services quasi-formels (CIE/SODECI)
-    5L,  0.28, 0.48,   # amenagement    : artisanal en milieu rural
-    6L,  0.38, 0.66,   # sante         : cliniques privees vs traditionnelles
-    7L,  0.32, 0.62,   # transport      : taxis informels dominants
-    8L,  0.82, 0.94,   # info/comm      : quasi-pleinement formel (operateurs autorises)
-    9L,  0.35, 0.58,   # recreation     : faible part, melange
-    10L, 0.62, 0.78,   # education      : ecoles enregistrees plus urbaines
-    11L, 0.18, 0.52,   # restaurants    : tres informel (maquis, gargotes)
-    12L, 0.88, 0.95,   # assurance      : formel par definition
-    13L, 0.22, 0.48,   # soins personnels  : salons de coiffeure — IEC elevee
-    98L, 0.00, 0.00,   # non-consommation
-    99L, 0.00, 0.00    # non-consommation
-  )
+  alpha2_tbl <- vat_alpha_milieu_parameters()
 
   df <- df %>%
     dplyr::left_join(alpha2_tbl, by = "coicop_num") %>%
@@ -74,7 +65,7 @@ run_sensitivity_taxation <- function(paths) {
     ) %>%
     dplyr::select(-alpha_rural, -alpha_urban, -is_rural)
 
-  # ── SCENARIO 3 : CEI × decile (IEC calibree, Bachas et al. 2024) ─────────
+  # ── SCENARIO 3 : CEI × decile (profil IEC exogene, Bachas et al. 2024) ─────────
   # alpha(coicop, d) = alpha_D1 + (d-1) × slope, cap a 1
   # Les pentes refleter l'estimation de Bachas et al. : pente IEC ~-5 a -8 pp par doublement log
 
@@ -85,30 +76,16 @@ run_sensitivity_taxation <- function(paths) {
     dplyr::ungroup()
 
   hh_decile <- df %>%
-    dplyr::distinct(hhid, conso_w_hh, hhweight) %>%
-    dplyr::mutate(decile = weighted_ntile(conso_w_hh, hhweight, n = 10))
+    dplyr::distinct(hhid, pcexp, hhsize, hhweight) %>%
+    dplyr::mutate(
+      pcweight = hhweight * hhsize,
+      decile = weighted_ntile(pcexp, pcweight, n = 10)
+    )
 
   df <- df %>%
     dplyr::left_join(hh_decile %>% dplyr::select(hhid, decile), by = "hhid")
 
-  alpha3_params <- tibble::tribble(
-    ~coicop_num, ~alpha_d1, ~slope,
-    1L,  0.12, 0.034,   # aliment/bev       : IEC la plus raide (D1→0.12, D10→0.42)
-    2L,  0.48, 0.024,   # alcool/tabac: IEC plus plate
-    3L,  0.22, 0.030,   # habillement
-    4L,  0.62, 0.022,   # logement/util.  : la plus plate (formel independamment)
-    5L,  0.22, 0.028,   # amenagement
-    6L,  0.30, 0.040,   # sante         : raide (cliniques privees aux sommets)
-    7L,  0.25, 0.038,   # transport      : pauvres=taxis informels, riches=voitures
-    8L,  0.78, 0.015,   # info/comm      : quasi-plate, formel a tous les deciles
-    9L,  0.28, 0.032,   # recreation
-    10L, 0.55, 0.025,   # education
-    11L,  0.12, 0.038,   # restaurants    : meme profil IEC que aliment/bev
-    12L,  0.85, 0.010,   # assurance      : quasi-formel partout
-    13L,  0.15, 0.034,   # soins personnels  : IEC raide (salons informels)
-    98L, 0.00, 0.000,
-    99L, 0.00, 0.000
-  )
+  alpha3_params <- vat_alpha_decile_parameters()
 
   df <- df %>%
     dplyr::left_join(alpha3_params, by = "coicop_num") %>%
@@ -141,12 +118,46 @@ run_sensitivity_taxation <- function(paths) {
                          "06_01_alpha_diagnostics_coicop_milieu.xlsx"))
 
   # ── Agreger au niveau menage ────────────────────────────────────────────
+  alpha_profile_decile <- df %>%
+    dplyr::group_by(decile) %>%
+    dplyr::summarise(
+      alpha_s3_moyen_pondere_depense = stats::weighted.mean(
+        alpha_3, depan_w * hhweight, na.rm = TRUE
+      ),
+      depense_ponderee = sum(depan_w * hhweight, na.rm = TRUE),
+      .groups = "drop"
+    )
+  parameter_notes <- tibble::tibble(
+    champ = c("nature", "ancrage", "calage ivoirien", "interprétation", "borne"),
+    valeur = c(
+      "Profil exogène, non estimé sur l'EHCVM",
+      "Bachas, Gadenne et Jensen (2024), courbe d'Engel de l'informalité",
+      "Aucune cible administrative ou moment ivoirien n'est imposé",
+      "Probabilité conjointe de collecte et de transmission à la vente finale",
+      "Le scénario strict alpha=1 est la borne de transmission intégrale"
+    )
+  )
+  openxlsx::write.xlsx(
+    list(
+      parametres_S2 = as.data.frame(alpha2_tbl),
+      parametres_S3 = as.data.frame(alpha3_params),
+      matrice_S3 = as.data.frame(vat_alpha_decile_matrix()),
+      profil_implicite_decile = as.data.frame(alpha_profile_decile),
+      notes = as.data.frame(parameter_notes)
+    ),
+    file = file.path(paths$TABLES, "06", "06_03_vat_informality_parameters.xlsx"),
+    overwrite = TRUE
+  )
   hh_sens <- df %>%
     dplyr::group_by(hhid) %>%
     dplyr::summarise(
       hhweight   = dplyr::first(hhweight),
+      grappe     = dplyr::first(grappe),
       milieu     = dplyr::first(milieu),
       region     = dplyr::first(region),
+      pcexp      = dplyr::first(pcexp),
+      hhsize     = dplyr::first(hhsize),
+      def_spa    = dplyr::first(def_spa),
       conso_w    = dplyr::first(conso_w_hh),
       decile     = dplyr::first(decile),
       vat_strict = sum(vat_item_strict, na.rm = TRUE),
@@ -155,9 +166,19 @@ run_sensitivity_taxation <- function(paths) {
       .groups    = "drop"
     ) %>%
     dplyr::mutate(
-      eff_vat_strict = vat_strict / conso_w,
-      eff_vat_s2     = vat_s2     / conso_w,
-      eff_vat_s3     = vat_s3     / conso_w
+      pcweight = hhweight * hhsize,
+      strata = paste(as.character(region), as.character(milieu), sep = '_'),
+      yd_pc = pcexp,
+      yd_hh = pcexp * hhsize,
+      vat_strict_real = vat_strict * def_spa,
+      vat_s2_real = vat_s2 * def_spa,
+      vat_s3_real = vat_s3 * def_spa,
+      vat_strict_pc = vat_strict_real / hhsize,
+      vat_s2_pc = vat_s2_real / hhsize,
+      vat_s3_pc = vat_s3_real / hhsize,
+      eff_vat_strict = vat_strict_real / yd_hh,
+      eff_vat_s2     = vat_s2_real / yd_hh,
+      eff_vat_s3     = vat_s3_real / yd_hh
     )
 
   save_parquet(hh_sens,
@@ -168,9 +189,9 @@ run_sensitivity_taxation <- function(paths) {
   rates_by_decile <- hh_sens %>%
     dplyr::group_by(decile) %>%
     dplyr::summarise(
-      rate_strict    = weighted.mean(eff_vat_strict, hhweight),
-      rate_s2_milieu = weighted.mean(eff_vat_s2,     hhweight),
-      rate_s3_iec    = weighted.mean(eff_vat_s3,     hhweight),
+      rate_strict    = weighted.mean(eff_vat_strict, pcweight),
+      rate_s2_milieu = weighted.mean(eff_vat_s2,     pcweight),
+      rate_s3_iec    = weighted.mean(eff_vat_s3,     pcweight),
       .groups        = "drop"
     )
 
@@ -182,14 +203,13 @@ run_sensitivity_taxation <- function(paths) {
   print(rates_by_decile)
 
   # ── Indices CEQ par scenario ──────────────────────────────────────────────
-  G_market <- weighted_gini(hh_sens$conso_w, hh_sens$hhweight)
+  G_market <- weighted_gini(hh_sens$yd_pc, hh_sens$pcweight)
 
   hh_sens <- hh_sens %>%
     dplyr::mutate(
-      market_income     = conso_w,
-      consumable_strict = conso_w - vat_strict,
-      consumable_s2     = conso_w - vat_s2,
-      consumable_s3     = conso_w - vat_s3
+      consumable_strict = pmax(yd_pc - vat_strict_pc, 0),
+      consumable_s2     = pmax(yd_pc - vat_s2_pc, 0),
+      consumable_s3     = pmax(yd_pc - vat_s3_pc, 0)
     )
 
   scenarios <- list(
@@ -197,14 +217,15 @@ run_sensitivity_taxation <- function(paths) {
          vat = "vat_strict", cons = "consumable_strict"),
     list(s = "s2_milieu",     desc = "CEI x milieu (Bachas 2024 + WB WPS10703)",
          vat = "vat_s2",     cons = "consumable_s2"),
-    list(s = "s3_iec_decile", desc = "CEI x decile, IEC calibree (Bachas 2024)",
+    list(s = "s3_iec_decile", desc = "CEI x decile, profil IEC exogene (Bachas 2024)",
          vat = "vat_s3",     cons = "consumable_s3")
   )
 
   ceq_summary <- purrr::map_dfr(scenarios, function(x) {
-    G_after <- weighted_gini(hh_sens[[x$cons]], hh_sens$hhweight)
-    C_vat   <- weighted_conindex(hh_sens[[x$vat]], hh_sens$conso_w,
-                                  hh_sens$hhweight)
+    G_after <- weighted_gini(hh_sens[[x$cons]], hh_sens$pcweight)
+    tax_pc <- paste0(x$vat, '_pc')
+    C_vat   <- weighted_conindex(hh_sens[[tax_pc]], hh_sens$yd_pc,
+                                  hh_sens$pcweight)
     tibble::tibble(
       scenario    = x$s,
       description = x$desc,
@@ -233,11 +254,14 @@ run_sensitivity_taxation <- function(paths) {
   )
 
   bs_results <- purrr::map_dfr(bs_list, function(x) {
+    tax_pc <- paste0(x$tax, '_pc')
     bs <- bootstrap_kakwani(
       data        = hh_sens,
-      tax_var     = x$tax,
-      welfare_var = "conso_w",
-      weight_var  = "hhweight",
+      tax_var     = tax_pc,
+      welfare_var = 'yd_pc',
+      weight_var  = 'pcweight',
+      cluster_var = 'grappe',
+      strata_var  = 'strata',
       reps        = 500
     )
     tibble::tibble(

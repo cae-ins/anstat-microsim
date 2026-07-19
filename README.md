@@ -1,11 +1,12 @@
-# Incidence distributive de la TVA en Cote d'Ivoire
-### Microsimulation fiscale · EHCVM 2021 · Document de travail - Avril 2026
+# Incidence distributive du système fiscal en Côte d'Ivoire
+### Microsimulation CEQ · EHCVM 2021 · Document de travail - Juillet 2026
 
 ---
 
 ## Table des matieres
 
 - [Presentation](#presentation)
+- [Acces au code et aux donnees](#acces-au-code-et-aux-donnees)
 - [Cadre conceptuel](#cadre-conceptuel)
 - [Methodologie](#methodologie)
 - [Donnees](#donnees)
@@ -23,11 +24,38 @@
 
 ## Presentation
 
-Ce projet estime l'incidence distributive de la TVA en Cote d'Ivoire a partir des donnees de consommation des menages de l'enquete EHCVM 2021.
+Ce projet estime l'incidence distributive des impôts, cotisations, paiements publics, réductions de prix et services publics d'éducation et de santé en Côte d'Ivoire à partir de l'EHCVM 2021.
 
-L'objectif central est d'identifier qui supporte effectivement la charge de la TVA, en niveau et relativement a la consommation totale, et de determiner si le systeme est progressif, proportionnel ou regressif le long de la distribution du bien-etre.
+L'objectif est d'identifier qui supporte les prélèvements et qui bénéficie des dépenses publiques, puis de mesurer leurs effets sur les inégalités, la pauvreté et l'appauvrissement fiscal.
 
 L'analyse est concue comme un exercice d'incidence fiscale de premier ordre, transparent, reproductible et adapte aux contraintes de donnees habituelles en Afrique subsaharienne.
+
+---
+
+## Acces au code et aux donnees
+
+Le code et la documentation sont publics sur GitHub :
+https://github.com/cae-ins/anstat-microsim. La branche `rewrite-r` contient
+l'implementation R utilisee par le document de travail.
+
+```bash
+git clone --branch rewrite-r --single-branch \
+  https://github.com/cae-ins/anstat-microsim.git
+cd anstat-microsim
+```
+
+Les microdonnees ne sont pas dupliquees dans Git. L'EHCVM 2021-2022 est
+accessible par deux catalogues officiels :
+
+- ANStat : https://centredecalcul.anstat.ci/index.php/welcome
+- Banque mondiale : https://microdata.worldbank.org/index.php/catalog/6273
+
+La reference du catalogue Banque mondiale est
+`CIV_2021_EHCVM-2_v01_M`. L'utilisateur doit accepter les conditions d'acces,
+de confidentialite et de citation du catalogue choisi, puis placer les fichiers
+dans l'arborescence decrite ci-dessous. Le hash obtenu par `git rev-parse HEAD`
+doit etre conserve avec chaque jeu de resultats afin d'identifier la version
+exacte du code.
 
 ---
 
@@ -37,12 +65,15 @@ L'analyse s'appuie sur le cadre CEQ (Commitment to Equity), adapte au contexte i
 
 En pratique, le projet se concentre sur le passage de la consommation observee a une mesure de bien-etre post-fiscalite simulee.
 
-### Identite centrale
+### Identités centrales
 
-```text
-Revenu consommable = Consommation totale - Taxes indirectes (TVA)
-```
+    Revenu disponible = revenu net de marché + paiements publics monétaires
+    Revenu consommable = revenu disponible - impôts indirects + réductions publiques de prix
+    Revenu final = revenu consommable + éducation publique + santé publique
 
+Le document de travail définit en français courant les conventions de pension
+PDI et PGT, le PMT, le calage, la TVA non déductible et tous les concepts de
+revenu avant de présenter les équations.
 ---
 
 ## Methodologie
@@ -67,6 +98,22 @@ La strategie empirique repose sur une approche de microsimulation ascendante en 
 | Unite d'observation principale | Menage x produit |
 | Unite d'analyse | Menage |
 
+Les fichiers harmonises de consommation, de bien-etre et d'individus sont
+places dans `01_data_sources/Dataout/`. Les modules menages detailles, dont
+l'emploi et la sante, sont places dans
+`01_data_sources/Datain/Menage/`. Les matrices entrees-sorties sont placees
+dans `01_data_sources/IO/`.
+
+Les fichiers `ehcvm_conso_CIV2021.dta`,
+`ehcvm_individu_CIV2021.dta` et `ehcvm_welfare_2b_CIV2021.dta` sont des
+sorties harmonisees, pas de simples renommages des fichiers telecharges. En
+partant des modules bruts, executer les programmes officiels conserves dans
+`01_data_sources/Programs/` apres adaptation de leurs chemins. Cette
+preparation assemble les modules, annualise la consommation et construit
+l'agregat de bien-etre 2b. Elle requiert Stata. Le pipeline R commence une fois
+ces sorties produites dans `Dataout/`; il ne faut pas renommer des fichiers
+bruts pour contourner cette etape.
+
 ### Variables cles
 
 | Variable | Description |
@@ -82,6 +129,13 @@ La strategie empirique repose sur une approche de microsimulation ascendante en 
 - `01_data_sources/Dataout/ehcvm_welfare_2b_CIV2021.dta`
 - `01_data_sources/COPR_EHCVM_TVA_renseigne.xlsx`
 - `01_data_sources/concordance_codpr_ICIO.csv`
+- `01_data_sources/params_indirect_other_2021.xlsx` pour les accises et le TEC
+- 01_data_sources/params_transfers_2021.xlsx pour les pensions, paiements publics et filets sociaux
+- 01_data_sources/params_subsidies_2021.xlsx pour les réductions de prix
+- 01_data_sources/params_education_2021.xlsx pour les dépenses d'éducation
+- 01_data_sources/params_health_2021.xlsx pour les dépenses de santé
+- 01_data_sources/reference_external/ANSTAT_CNA_definitifs_2023.pdf
+- 01_data_sources/reference_external/ANSTAT_annuaire_statistiques_economiques_2023.pdf
 - `01_data_sources/IO/CIV2020ttl.csv` pour l'extension input-output
 
 ---
@@ -94,7 +148,7 @@ L'analyse integre trois scenarios de taxation effective inspires du cadre IEC (I
 - `S2` : alpha varie selon la categorie COICOP et le milieu urbain/rural
 - `S3` : alpha varie avec le decile de consommation
 
-Ces scenarios servent a tester la robustesse des resultats distributifs a l'informalite.
+Les coefficients S2 et S3 sont des hypotheses exogenes, non estimees sur l'EHCVM et non calees sur une recette administrative. Le pipeline publie la matrice S3 exacte et son profil implicite par decile.
 
 ---
 
@@ -108,6 +162,14 @@ Ces scenarios servent a tester la robustesse des resultats distributifs a l'info
 - Analyses de sensibilite
 - Impact sur la pauvrete via les indices FGT
 - Scenarios de reforme sur les intrants avicoles
+- Accises et droits de douane par decile, avec validation micro-macro et Kakwani
+- Pensions, PSSN, bourses et prestations sociales, avec scénarios PDI/PGT
+- Réductions publiques de prix de l'électricité et de l'eau
+- Services publics d'éducation et de santé, bruts et nets des paiements directs
+- Sept concepts de revenu CEQ jusqu'au revenu final
+- Décomposition exacte de Shapley entre six groupes d'instruments
+- Appauvrissement fiscal, nouveaux pauvres et gains sous le seuil
+- Classeur final avec contrôles ANStat 2021 et comparaisons 2022-2023
 
 ---
 
@@ -127,11 +189,18 @@ Les resultats doivent etre interpretes comme une approximation de premier ordre 
 
 | Limite | Statut |
 |---|---|
-| Pas de taxes directes ni transferts sociaux modelises dans le coeur CEQ | Hors perimetre courant |
+| Pensions contributives et transferts sociaux | Traites par l'etape 19 ; PDI central et PGT en robustesse |
+| Impots directs et cotisations sociales | Traites par l'etape 17 |
+| Accises et droits de douane | Traites par l'etape 18 ; effets directs en version 1 |
 | Informalite observee indirectement | Traitee par scenarios |
 | Effets input-output | Traites par les scripts `13` et `14` |
 | Reforme fiscale | Traitee par les scripts `10`, `11` et `15` |
-| Pauvrete | Traitee par le script `12` |
+| Pauvreté | Traitée par les étapes 12 et 25 |
+| Réductions de prix | Traitées par l'étape 20; carburants en borne haute |
+| Éducation publique | Traitée par l'étape 21, brute et nette des frais |
+| Santé publique | Traitée par l'étape 22 sans statut d'assurance au centre |
+| Revenu final | Assemblé et vérifié à l'étape 23 |
+| Shapley et appauvrissement fiscal | Traités aux étapes 24 et 25 |
 
 ---
 
@@ -198,55 +267,74 @@ En pratique, le projet mobilise aujourd'hui la plateforme de facon minimale :
 
 ## Reproductibilite
 
-**Pipeline Stata (`04_scripts/`)**
+Le meme protocole sert a un economiste et a un agent de programmation. Il est
+documente dans `replication_package/README.md`; `AGENTS.md` et
+`replication_package/AGENT_RUNBOOK.md` traduisent les memes regles pour un agent,
+sans changer la methode ni les tolerances.
 
-- scripts `.do`
-- chemins centralises dans `00_setup.do`
+### 1. Restaurer l'environnement
 
-**Pipeline R (`05_scripts_R/`)**
-
-- `00_master.R` definit l'orchestrateur `lance_pipeline(premiere_etape, derniere_etape)`
-- les intermediaires sont stockes en `parquet`
-- les acces aux sources et sorties sont centralises dans `utils/io.R`
-- des validations explicites verifient l'existence des fichiers et des colonnes critiques
-- `lance_pipeline()` valide les bornes d'etapes avant execution
-- les outputs sont exportes automatiquement vers `07_reports/`
-
-### Lancement depuis R
-
-```r
-source("05_scripts_R/00_master.R")
-lance_pipeline(premiere_etape = 1, derniere_etape = 13)
+```bash
+Rscript --vanilla replication_package/code/00_restore_environment.R
 ```
 
-Pour ne lancer que l'etape pauvrete :
+Cette commande restaure les versions fixees dans `renv.lock` dans une
+bibliotheque isolee du projet. Elle est la seule etape autorisee a installer des
+paquets.
 
-```r
-lance_pipeline(premiere_etape = 13, derniere_etape = 13)
+### 2. Placer et verifier les donnees
+
+Les microdonnees EHCVM doivent etre obtenues aupres de l'ANStat ou du catalogue
+de la Banque mondiale, puis placees aux chemins decrits dans
+`replication_package/data/access-restricted-data.md`.
+
+```bash
+Rscript --vanilla replication_package/code/00_preflight.R
 ```
 
-### Lancement batch depuis PowerShell
+Le pre-controle verifie R, les paquets, l'arborescence, les 20 entrees attendues,
+leurs tailles et empreintes MD5. Son rapport est ecrit dans
+`replication_package/output/preflight_report.csv`; aucune ligne `FAIL` n'est
+acceptable.
 
-```powershell
-& 'C:\Program Files\R\R-4.5.3\bin\Rscript.exe' -e "source('05_scripts_R/00_master.R')"
+### 3. Reproduire les 26 etapes
+
+```bash
+Rscript --vanilla replication_package/code/00_run_all.R
 ```
 
-### Dependances R
+Le programme extrait automatiquement les matrices TRE si necessaire, execute le
+pipeline complet, enregistre le journal et lance la verification numerique. Une
+execution partielle avec `lance_pipeline()` reste utile au developpement, mais
+ne constitue pas une replication depuis les entrees.
 
-- `00_setup.R` charge les paquets requis
-- si un paquet est absent, `00_setup.R` tente de l'installer
-- en environnement verrouille, il peut etre preferable de preinstaller les paquets avant le premier run
+### 4. Verifier des sorties existantes
 
----
+```bash
+Rscript --vanilla replication_package/code/01_verify_outputs.R
+```
 
+Le rapport `replication_package/output/verification_report.csv` compare les
+indicateurs centraux aux valeurs attendues. Il doit lui aussi contenir zero
+echec.
+
+### Documentation de replication
+
+- `replication_package/data/data_manifest.csv` : provenance, taille et hash des entrees;
+- `replication_package/exhibit_map.csv` : chaque tableau et figure relie a son script;
+- `replication_package/environment/` : versions, `sessionInfo()` et besoins materiels;
+- `replication_package/replication_spec.json` : commandes et criteres de succes lisibles par machine;
+- `replication_package/DCAS_checklist.md` : controle de preparation a la diffusion.
 ## Etat du pipeline
 
 Le pipeline R a ete verifie en execution reelle sur ce depot.
 
-- Les etapes `1` a `13` s'executent avec succes
+- L'orchestrateur expose les étapes 1 à 26
+- La chaîne a été rejouée depuis zéro en deux segments successifs, étapes 1 à 13
+  puis 14 à 26, sur les mêmes sorties intermédiaires; toutes les étapes ont abouti
 - Les sorties intermediaires sont ecrites dans `02_data_intermediate/`
 - Les tableaux et figures sont exportes dans `07_reports/`
-- Les scripts `13`, `14` et `15` existent comme extensions du pipeline principal et utilisent la meme couche d'I/O
+- Les extensions input-output, pauvrete, reforme et prelevements directs utilisent la meme couche d'I/O
 
 ### Scripts R principaux
 
@@ -265,23 +353,48 @@ Le pipeline R a ete verifie en execution reelle sur ce depot.
 | 11 | `10_reform_chicken_inputs.R` | reforme avicole |
 | 12 | `11_reform_figures.R` | figures de reforme |
 | 13 | `12_poverty_incidence.R` | pauvrete FGT |
+| 14 | `13_leontief_io.R`, `13b_leontief_local_io.R` | TVA enchassee, ICIO et TRE |
+| 15 | `14_leontief_poverty.R` | pauvrete avec TVA enchassee |
+| 16 | `15_reform_vat_simulation.R` | taxation de la vente finale à 9 %, vecteur de TVA incorporée constant, informalité et recyclage |
+| 17 | `16_direct_taxes.R` | impots directs, cotisations et revenu de marche net |
+| 18 | `17_indirect_other.R` | accises, droits de douane TEC et validation micro-macro |
+| 19 | 18_transfers.R | pensions, paiements publics et filets sociaux; PDI/PGT |
+| 20 | 19_subsidies.R | réductions publiques de prix de l'électricité et de l'eau |
+| 21 | 20_inkind_education.R | services publics d'éducation |
+| 22 | 21_inkind_health.R | services publics de santé, sans assurance EHCVM au centre |
+| 23 | 22_income_concepts.R | sept concepts de revenu CEQ |
+| 24 | 23_marginal_contribution.R | progressivité et décomposition de Shapley |
+| 25 | 24_fiscal_impoverishment.R | appauvrissement fiscal et gains sous le seuil |
+| 26 | 25_ceq_report_tables.R | classeur CEQ, contrôles ANStat et manifeste |
 
-### Points ouverts
+### Limites restantes
 
-- au moins un script de figures utilise `dplyr::case_match()`, ce qui produit un warning de depreciation sans bloquer l'execution
-- `03_data_output/` est encore peu utilise ; la plupart des sorties analytiques vivent dans `02_data_intermediate/` et `07_reports/`
-
+- la propagation par le TRE des droits de douane et des accises sur carburants
+  reste une extension;
+- le prix de parité du carburant 2021 n'est pas assez documenté pour une
+  réduction de prix centrale;
+- la référence AT/MP doit encore être remplacée par une exécution administrative
+  indépendante;
+- les agrégats ANStat couvrent toute l'économie et servent de contrôles de
+  périmètre, non de cibles de calage des ménages.
 ---
 
-## References
+## Références principales
 
-- Bachas, P., Gadenne, L., & Jensen, A. (2024). *Informality, Consumption Taxes, and Redistribution*.
-- Lustig, N. (Ed.) (2018). *Commitment to Equity Handbook*.
-- World Bank (2024). *Urban Informality in Sub-Saharan Africa*. Policy Research Working Paper No. 10703.
-- UNECA (2019). *Economic Report on Africa: Fiscal Policy for Financing Sustainable Development*.
-
+- Lustig, N. (dir.), 2022, Commitment to Equity Handbook, deuxième édition,
+  Brookings Institution et CEQ Institute.
+- Akim, A.-M., Ben Jelloul, M., Czajka, L. et Robilliard, A.-S., 2020,
+  Collect More, Spend Better?, AFD Research Paper 190.
+- Demery, L., 2003, Analyzing the Incidence of Public Spending.
+- Shorrocks, A. F., 2013, Decomposition Procedures for Distributional
+  Analysis, Journal of Economic Inequality.
+- Higgins, S. et Lustig, N., 2016, Can a Poverty-Reducing and Progressive Tax
+  and Transfer System Hurt the Poor?, Journal of Development Economics.
+- ANStat, Comptes nationaux annuels définitifs 2023.
+- ANStat, Annuaire des statistiques économiques 2023.
+- ANARE-CI, Rapport d'activités 2021.
 ---
 
 ![Statut](https://img.shields.io/badge/Statut-Document%20de%20travail-orange?style=flat-square)
-![Date](https://img.shields.io/badge/Date-Avril%202026-lightgrey?style=flat-square)
+![Date](https://img.shields.io/badge/Date-Juillet%202026-lightgrey?style=flat-square)
 ![Institution](https://img.shields.io/badge/Institution-ANStat%20CAE-green?style=flat-square)

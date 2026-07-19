@@ -20,58 +20,90 @@ source("05_scripts_R/00_setup.R")
 
 # ── Charger tous les modules d'etapes ────────────────────────────────────────────────────
 step_files <- c(
-  "01_prepare_data.R",
-  "02_mapping_tax.R",
-  "03_compute_taxes.R",
-  "04_analysis.R",
-  "05_progressivity.R",
-  "06_01_sensitivity_taxation.R",
-  "06_02_sensitivity_ranking.R",
-  "07_appendix_tables.R",
-  "08_figures.R",
-  "09_vat_determinants.R",
-  "10_reform_chicken_inputs.R",
-  "11_reform_figures.R",
-  "12_poverty_incidence.R"
+  "01_prepare_data.R", "02_mapping_tax.R", "03_compute_taxes.R",
+  "04_analysis.R", "05_progressivity.R", "06_01_sensitivity_taxation.R",
+  "06_02_sensitivity_ranking.R", "07_appendix_tables.R", "08_figures.R",
+  "09_vat_determinants.R", "10_reform_chicken_inputs.R", "11_reform_figures.R",
+  "12_poverty_incidence.R", "16_direct_taxes.R", "17_indirect_other.R",
+  "18_transfers.R", "19_subsidies.R", "20_inkind_education.R",
+  "21_inkind_health.R", "22_income_concepts.R", "23_marginal_contribution.R",
+  "24_fiscal_impoverishment.R", "25_ceq_report_tables.R"
 )
 
 for (f in step_files) {
   source(file.path(CODE, f))
 }
 
+# Les etapes 13-15 (Leontief I/O, pauvrete I/O, reforme TVA) sont des scripts
+# autonomes qui s'executent des le source(). On les enveloppe dans des
+# fonctions paresseuses pour pouvoir les enchainer depuis lance_pipeline().
+run_leontief_io <- function(paths) {
+  local_io_files <- file.path(
+    SILVER, "IO_local", rep(c("current", "constant"), each = 3),
+    rep(c("A_domestic_2023.csv", "imports_2023.csv", "valuation_bridge_2023.csv"), 2)
+  )
+  if (!all(file.exists(local_io_files))) {
+    tre_sources <- file.path(
+      ROOT, "01_data_sources", "IO",
+      c("TRE_COURANT_2023.XLS", "TRE_CONSTANT_2023.XLS")
+    )
+    missing_tre <- tre_sources[!file.exists(tre_sources)]
+    if (length(missing_tre) > 0L) {
+      stop(
+        "Fichiers TRE requis pour l'étape 14 : ",
+        paste(missing_tre, collapse = ", "),
+        ". Voir replication_package/data/access-restricted-data.md.",
+        call. = FALSE
+      )
+    }
+    source(file.path(CODE, "extract_local_io_v4.R"))
+  }
+  source(file.path(CODE, "13_leontief_io.R"))
+  old_basis <- Sys.getenv("IO_LOCAL_BASIS", unset = NA_character_)
+  on.exit({
+    if (is.na(old_basis)) Sys.unsetenv("IO_LOCAL_BASIS")
+    else Sys.setenv(IO_LOCAL_BASIS = old_basis)
+  }, add = TRUE)
+  for (basis in c("current", "constant")) {
+    Sys.setenv(IO_LOCAL_BASIS = basis)
+    source(file.path(CODE, "13b_leontief_local_io.R"))
+  }
+}
+run_leontief_poverty <- function(paths) source(file.path(CODE, "14_leontief_poverty.R"))
+run_reform_vat       <- function(paths) source(file.path(CODE, "15_reform_vat_simulation.R"))
+
 # ── Definition du pipeline ( Inspire de INES enchainement.R) ────────────────────
 # data.frame avec une ligne par etape : id, description, nom de fonction
 enchainement <- tibble::tibble(
-  etape_id    = 1:13,
+  etape_id = 1:26,
   description = c(
-    "Preparation des donnees EHCVM",
-    "Mapping TVA par produit",
-    "Calcul de l'incidence TVA",
-    "Analyse distributive (deciles, quintiles, milieu, region)",
-    "Indices de progressivite (Gini, Kakwani, Reynolds-Smolensky)",
-    "Sensibilite — scenarios de taxation (alpha strict / milieu / decile)",
-    "Sensibilite — classements distributifs (total / pc / AE1 / AE2)",
-    "Tableaux annexes",
-    "Figures analytiques (fig1-fig4)",
-    "Determinants de la TVA effective (regressions OLS)",
-    "Simulation reforme intrants avicoles",
-    "Figures reforme (figR1-figR4)",
-    "Incidence sur la povrete (FGT) — TVA et reforme avicole"
+    "Preparation des donnees EHCVM", "Mapping TVA par produit",
+    "Calcul de l'incidence TVA", "Analyse distributive",
+    "Indices de progressivite", "Sensibilite des scenarios de taxation",
+    "Sensibilite des classements distributifs", "Tableaux annexes",
+    "Figures analytiques", "Determinants de la TVA effective",
+    "Simulation reforme intrants avicoles", "Figures reforme",
+    "Incidence sur la pauvrete", "TVA enchassee par matrice entrees-sorties",
+    "Pauvrete avec TVA enchassee", "Simulation reforme TVA 0% vers 9%",
+    "Impots directs et cotisations", "Accises et droits de douane",
+    "Pensions, paiements directs et filets sociaux",
+    "Reductions de prix sur electricite, eau et carburants",
+    "Services publics d'education attribues aux menages",
+    "Services publics de sante attribues aux menages",
+    "Assemblage des concepts de revenu CEQ",
+    "Contributions distributives et decomposition de Shapley",
+    "Appauvrissement fiscal et gains sous le seuil",
+    "Tables CEQ finales, controle ANSTAT et manifeste"
   ),
   fonction = c(
-    "prepare_data",
-    "map_tax",
-    "compute_taxes",
-    "run_analysis",
-    "run_progressivity",
-    "run_sensitivity_taxation",
-    "run_sensitivity_ranking",
-    "run_appendix_tables",
-    "run_figures",
-    "run_determinants",
-    "run_reform_chicken",
-    "run_reform_figures",
-    "run_poverty_incidence"
+    "prepare_data", "map_tax", "compute_taxes", "run_analysis",
+    "run_progressivity", "run_sensitivity_taxation", "run_sensitivity_ranking",
+    "run_appendix_tables", "run_figures", "run_determinants",
+    "run_reform_chicken", "run_reform_figures", "run_poverty_incidence",
+    "run_leontief_io", "run_leontief_poverty", "run_reform_vat",
+    "direct_taxes", "indirect_other", "transfers", "subsidies",
+    "inkind_education", "inkind_health", "income_concepts",
+    "marginal_contribution", "fiscal_impoverishment", "ceq_report_tables"
   )
 )
 
@@ -89,7 +121,7 @@ paths <- list(
 
 # ── Orchestrateur ──────────────────────────────────────────────────────────────
 lance_pipeline <- function(premiere_etape = 1,
-                           derniere_etape  = 13,
+                           derniere_etape  = 26,
                            verbose         = TRUE) {
 
   stopifnot(
@@ -154,5 +186,5 @@ lance_pipeline <- function(premiere_etape = 1,
   invisible(NULL)
 }
 
-# ── Execution ────────────────────────────────────────────────────────────────────────
-lance_pipeline(premiere_etape = 1, derniere_etape = 13)
+# Le chargement du master ne lance aucune etape. L'appel est toujours explicite,
+# par exemple: source('05_scripts_R/00_master.R'); lance_pipeline(1, 26).

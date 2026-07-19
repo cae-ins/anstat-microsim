@@ -31,9 +31,11 @@ run_progressivity <- function(paths) {
   )
 
   # ── Indices CEQ ───────────────────────────────────────────────────────────
-  G_market  <- weighted_gini(hh$conso_w,           hh$hhweight)
-  G_consump <- weighted_gini(hh$consumable_income,  hh$hhweight)
-  C_vat     <- weighted_conindex(hh$vat_w, hh$conso_w, hh$hhweight)
+  G_market  <- weighted_gini(hh$yd_pc, hh$pcweight)
+  G_consump <- weighted_gini(pmax(hh$yc_pc_vat, 0), hh$pcweight)
+  C_vat     <- weighted_conindex(
+    hh$vat_w_real / hh$hhsize, hh$yd_pc, hh$pcweight
+  )
   Kakwani   <- C_vat - G_market
   RS        <- G_consump - G_market
 
@@ -64,7 +66,7 @@ run_progressivity <- function(paths) {
   lorenz <- hh %>%
     dplyr::group_by(decile) %>%
     dplyr::summarise(
-      conso_sum = sum(conso_w * hhweight),
+      conso_sum = sum(yd_pc * pcweight),
       .groups   = "drop"
     ) %>%
     dplyr::arrange(decile) %>%
@@ -86,7 +88,7 @@ run_progressivity <- function(paths) {
   concentration <- hh %>%
     dplyr::group_by(decile) %>%
     dplyr::summarise(
-      vat_sum = sum(vat_w * hhweight),
+      vat_sum = sum((vat_w_real / hhsize) * pcweight),
       .groups = "drop"
     ) %>%
     dplyr::arrange(decile) %>%

@@ -1,364 +1,364 @@
 # =============================================================================
-# Etape 15 — Simulation d'une reforme TVA : hausse de 0 % a 9 %
+# Etape 15 - Taxation de la vente finale a 9 % avec vecteur c constant
 #
-# OBJECTIF :
-# Mesurer l'impact distributif d'une reforme TVA qui applique un taux de 9 %
-# a des produits actuellement exoneres (r_vat_official == 0).
-# Focus : taux de pauvrete (P0/P1/P2) et charge par quintile.
-#
-# SCENARIOS (modifiables dans la section CONFIG) :
-#   S_agri     — produits agricoles bruts (ICIO : A01_02, A03)
-#   S_commerce — commerce/distribution (ICIO : G, formalisation)
-#   S_all      — tous produits a 0% hors services publics (E, L, P, Q)
-#
-# APPROCHE :
-#   delta_vat_hh = Σ_k (depan_w_k × taux_reforme)  ∀ k dans l'ensemble cible
-#   pcexp_reform = pcexp − delta_vat_hh / hhsize
-#   Charge relative = delta_vat_hh / (pcexp × hhsize)  par quintile
-#
-# ENTREE :
-#   SILVER/01/conso_clean.parquet
-#   SILVER/06/fiscal_sensitivity_taxation.parquet
-#   01_data_sources/concordance_codpr_ICIO.csv
-#   DATA/ehcvm_welfare_2b_CIV2021.dta
-#
-# SORTIE :
-#   TABLES/15/15_01_fgt_reform_national.xlsx
-#   TABLES/15/15_02_burden_by_quintile.xlsx
-#   TABLES/15/15_03_fgt_by_quintile.xlsx
-#   TABLES/15/15_04_nouveaux_pauvres_reform.xlsx
-#   FIGS/fig_reform_burden_quintile.png
-#   FIGS/fig_reform_fgt_impact.png
-#   SILVER/15/reform_vat_hh.parquet
+# La simulation croise trois ensembles de produits (agricoles, commerce, tous
+# les produits eligibles) et trois hypotheses de paiement/transmission de la
+# TVA (strict, S2 milieu x COICOP, S3 decile x COICOP). Pour chaque combinaison,
+# elle estime l'effet brut et un benchmark budgetairement neutre qui recycle la
+# recette sous forme d'un transfert universel par personne.
 # =============================================================================
-library(dplyr); library(tidyr); library(ggplot2)
 
 source("05_scripts_R/00_setup.R")
 
-SILVER_15 <- file.path(SILVER, "15")
-dir.create(SILVER_15, showWarnings = FALSE)
-dir.create(file.path(TABLES, "15"), showWarnings = FALSE)
-
-# ── CONFIG ────────────────────────────────────────────────────────────────────
-TAUX_REFORME <- 0.09   # taux TVA appliqué aux produits cibles
-
-# Secteurs ICIO exonérés de manière structurelle (hors réforme)
+TAUX_REFORME <- 0.09
 SECTEURS_HORS_REFORME <- c("E", "L", "P", "Q", "T")
+REPS_BOOT <- 500L
 
-# ── 1. CHARGEMENT ─────────────────────────────────────────────────────────────
+dir.create(file.path(SILVER, "15"), recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path(TABLES, "15"), recursive = TRUE, showWarnings = FALSE)
+
 conc <- read_source_csv(
-  path_parts = c("concordance_codpr_ICIO.csv"),
+  path_parts = "concordance_codpr_ICIO.csv",
   .label = "codpr-ICIO concordance",
   .required_cols = c("codpr", "secteur_ICIO")
-) %>% filter(secteur_ICIO != "hors_champ")
+) %>%
+  dplyr::filter(secteur_ICIO != "hors_champ") %>%
+  dplyr::distinct(codpr, secteur_ICIO)
 
-conso <- load_parquet(
-  file.path(SILVER, "01", "conso_clean.parquet")
-) %>% select(hhid, hhweight, region, milieu, codpr, depan_w, r_vat_official)
+conso <- load_parquet(file.path(SILVER, "01", "conso_clean.parquet")) %>%
+  dplyr::select(
+    hhid, codpr, coicop, milieu, depan_w, r_vat_official
+  )
+
+base <- load_parquet(
+  file.path(SILVER, "04", "fiscal_data_analysis_ready.parquet")
+) %>%
+  dplyr::filter(
+    is.finite(yd_pc), is.finite(zref), hhsize > 0,
+    is.finite(hhweight), is.finite(def_spa)
+  ) %>%
+  dplyr::mutate(quintile = ceiling(decile / 2))
+
 assert_required_columns(
-  conso,
-  c("hhid", "hhweight", "codpr", "depan_w", "r_vat_official"),
-  object_name = "conso_clean.parquet"
+  base,
+  c("hhid", "grappe", "strata", "hhweight", "pcweight", "hhsize",
+    "yd_pc", "yd_hh", "zref", "def_spa", "decile", "quintile"),
+  object_name = "fiscal_data_analysis_ready.parquet"
 )
 
-hh_sens <- load_parquet(
-  file.path(SILVER, "06", "fiscal_sensitivity_taxation.parquet")
-) %>% select(hhid, decile)
-assert_required_columns(
-  hh_sens,
-  c("hhid", "decile"),
-  object_name = "fiscal_sensitivity_taxation.parquet"
-)
-
-welfare <- load_raw_dta(
-  "ehcvm_welfare_2b_CIV2021.dta",
-  col_select = c("hhid", "pcexp", "zref", "hhsize")
-)
-
-# ── 2. DÉFINITION DES SCÉNARIOS ───────────────────────────────────────────────
-# Produits éligibles à la réforme : actuellement à 0% ET hors secteurs
-# protégés. On utilise r_vat_official == 0 comme critère direct.
 eligible_codpr <- conso %>%
-  filter(r_vat_official == 0) %>%
-  left_join(conc %>% select(codpr, secteur_ICIO), by = "codpr") %>%
-  filter(!secteur_ICIO %in% SECTEURS_HORS_REFORME | is.na(secteur_ICIO)) %>%
-  distinct(codpr, secteur_ICIO)
+  dplyr::filter(r_vat_official == 0) %>%
+  dplyr::left_join(conc, by = "codpr") %>%
+  dplyr::filter(
+    !secteur_ICIO %in% SECTEURS_HORS_REFORME | is.na(secteur_ICIO)
+  ) %>%
+  dplyr::distinct(codpr, secteur_ICIO)
 
 scenarios <- list(
-  S_agri     = eligible_codpr %>% filter(secteur_ICIO %in% c("A01_02", "A03"))  %>% pull(codpr),
-  S_commerce = eligible_codpr %>% filter(secteur_ICIO == "G")                   %>% pull(codpr),
-  S_all      = eligible_codpr$codpr
+  S_agri = eligible_codpr %>%
+    dplyr::filter(secteur_ICIO %in% c("A01_02", "A03")) %>%
+    dplyr::pull(codpr),
+  S_commerce = eligible_codpr %>%
+    dplyr::filter(secteur_ICIO == "G") %>%
+    dplyr::pull(codpr),
+  S_all = eligible_codpr$codpr
 )
 
-message("\n=== Produits éligibles par scénario ===")
-purrr::iwalk(scenarios, ~message(sprintf("  %-12s : %d codpr", .y, length(.x))))
-
-# ── 3. CHARGE TVA ADDITIONNELLE PAR MÉNAGE ────────────────────────────────────
-compute_delta_vat <- function(codpr_cibles) {
-  conso %>%
-    filter(codpr %in% codpr_cibles) %>%
-    group_by(hhid) %>%
-    summarise(
-      delta_vat = sum(depan_w * TAUX_REFORME, na.rm = TRUE),
-      .groups   = "drop"
-    )
-}
-
-delta_vat <- purrr::map(scenarios, compute_delta_vat)
-
-# ── 4. DONNÉES BIEN-ÊTRE ET QUINTILE ──────────────────────────────────────────
-base <- welfare %>%
-  left_join(hh_sens, by = "hhid") %>%
-  filter(!is.na(pcexp), !is.na(zref), !is.na(hhsize), hhsize > 0,
-         !is.na(decile)) %>%
-  mutate(
-    quintile = ceiling(decile / 2),
-    w_ind    = hhweight * hhsize   # poids individu pour taux de pauvreté
-  )
-
-# ── 5. FONCTIONS UTILITAIRES ──────────────────────────────────────────────────
-fgt <- function(y, z, w, alpha) {
-  gap <- pmax(0, 1 - y / z)
-  if (alpha == 0L) weighted.mean(gap > 0, w, na.rm = TRUE)
-  else             weighted.mean(gap^alpha, w, na.rm = TRUE)
-}
-
-make_hh_reform <- function(delta_df, hh_data) {
-  hh_data %>%
-    left_join(delta_df, by = "hhid") %>%
-    mutate(
-      delta_vat    = replace_na(delta_vat, 0),
-      pcexp_reform = pcexp - delta_vat / hhsize,
-      # Charge relative : delta_vat annualisé / revenu total ménage
-      burden_rel   = delta_vat / (pcexp * hhsize),
-      poor_pre     = pcexp        < zref,
-      poor_reform  = pcexp_reform < zref,
-      new_poor     = (!poor_pre) & poor_reform
-    )
-}
-
-compute_fgt_scenario <- function(hh, scenario_name) {
-  p0_pre <- fgt(hh$pcexp,        hh$zref, hh$w_ind, 0)
-  p1_pre <- fgt(hh$pcexp,        hh$zref, hh$w_ind, 1)
-  p2_pre <- fgt(hh$pcexp,        hh$zref, hh$w_ind, 2)
-  tibble(
-    scenario  = scenario_name,
-    concept   = c("Avant réforme", sprintf("Après réforme (%s)", scenario_name)),
-    p0        = c(p0_pre,
-                  fgt(hh$pcexp_reform, hh$zref, hh$w_ind, 0)),
-    p1        = c(p1_pre,
-                  fgt(hh$pcexp_reform, hh$zref, hh$w_ind, 1)),
-    p2        = c(p2_pre,
-                  fgt(hh$pcexp_reform, hh$zref, hh$w_ind, 2))
+items <- conso %>%
+  dplyr::left_join(
+    base %>% dplyr::select(hhid, decile),
+    by = "hhid"
   ) %>%
-    mutate(
-      delta_p0 = p0 - p0[1],
-      delta_p1 = p1 - p1[1],
-      delta_p2 = p2 - p2[1]
-    )
-}
+  dplyr::mutate(
+    alpha_strict = 1,
+    alpha_s2 = vat_alpha_milieu(coicop, milieu),
+    alpha_s3 = vat_alpha_decile(coicop, decile)
+  )
 
-compute_burden_quintile <- function(hh, scenario_name) {
-  hh %>%
-    group_by(quintile) %>%
-    summarise(
-      # Charge moyenne par ménage (FCFA/an)
-      delta_vat_mean    = weighted.mean(delta_vat,  hhweight, na.rm = TRUE),
-      # Charge relative (% du revenu) — clé pour régressivité
-      burden_rel_mean   = weighted.mean(burden_rel, hhweight, na.rm = TRUE),
-      # Part de la réforme captée par le quintile
-      delta_vat_total   = sum(delta_vat * hhweight,  na.rm = TRUE),
+calcule_choc <- function(codpr_cibles, scenario) {
+  items %>%
+    dplyr::filter(codpr %in% codpr_cibles) %>%
+    tidyr::pivot_longer(
+      c(alpha_strict, alpha_s2, alpha_s3),
+      names_to = "hypothese", values_to = "alpha"
+    ) %>%
+    dplyr::mutate(
+      hypothese = dplyr::recode(
+        hypothese,
+        alpha_strict = "strict", alpha_s2 = "S2", alpha_s3 = "S3"
+      ),
+      # A taux initial nul, la depense observee est la base hors taxe.
+      delta_vat_nominal = depan_w * alpha * TAUX_REFORME
+    ) %>%
+    dplyr::group_by(hhid, hypothese) %>%
+    dplyr::summarise(
+      delta_vat_nominal = sum(delta_vat_nominal, na.rm = TRUE),
       .groups = "drop"
     ) %>%
-    mutate(
-      scenario      = scenario_name,
-      vat_share_q   = delta_vat_total / sum(delta_vat_total)
-    )
+    dplyr::mutate(scenario = scenario)
 }
 
-compute_fgt_quintile <- function(hh, scenario_name) {
-  hh %>%
-    group_by(quintile) %>%
-    summarise(
-      p0_pre     = fgt(pcexp,        zref, w_ind, 0L),
-      p0_reform  = fgt(pcexp_reform, zref, w_ind, 0L),
-      p1_pre     = fgt(pcexp,        zref, w_ind, 1L),
-      p1_reform  = fgt(pcexp_reform, zref, w_ind, 1L),
-      np_pond    = sum(new_poor * hhweight, na.rm = TRUE),
-      .groups    = "drop"
+chocs <- purrr::imap_dfr(scenarios, calcule_choc)
+
+prepare_combinaison <- function(scenario, hypothese) {
+  choc <- chocs %>%
+    dplyr::filter(
+      .data$scenario == .env$scenario,
+      .data$hypothese == .env$hypothese
     ) %>%
-    mutate(
-      scenario   = scenario_name,
-      delta_p0   = p0_reform - p0_pre
+    dplyr::select(hhid, delta_vat_nominal)
+
+  hh <- base %>%
+    dplyr::left_join(choc, by = "hhid") %>%
+    dplyr::mutate(
+      delta_vat_nominal = tidyr::replace_na(delta_vat_nominal, 0),
+      delta_vat_reel = delta_vat_nominal * def_spa,
+      yd_pc_sans_recyclage = yd_pc - delta_vat_reel / hhsize,
+      charge_relative = delta_vat_reel / yd_hh
+    )
+
+  recette <- sum(hh$delta_vat_nominal * hh$hhweight, na.rm = TRUE)
+  population <- sum(hh$hhsize * hh$hhweight, na.rm = TRUE)
+  transfert_pc_nominal <- recette / population
+
+  hh %>%
+    dplyr::mutate(
+      scenario = scenario,
+      hypothese = hypothese,
+      recette_nominale = recette,
+      transfert_pc_nominal = transfert_pc_nominal,
+      yd_pc_recyclage = yd_pc_sans_recyclage +
+        transfert_pc_nominal * def_spa
     )
 }
 
-# ── 6. CALCULS PAR SCÉNARIO ───────────────────────────────────────────────────
-results <- purrr::imap(delta_vat, function(dv, sc) {
-  hh <- make_hh_reform(dv, base)
-  list(
-    hh        = hh,
-    fgt_nat   = compute_fgt_scenario(hh, sc),
-    burden_q  = compute_burden_quintile(hh, sc),
-    fgt_q     = compute_fgt_quintile(hh, sc)
+cles <- tidyr::crossing(
+  scenario = names(scenarios),
+  hypothese = c("strict", "S2", "S3")
+)
+
+combinaisons <- purrr::map2(
+  cles$scenario, cles$hypothese, prepare_combinaison
+)
+names(combinaisons) <- paste(cles$scenario, cles$hypothese, sep = "__")
+
+# Les neuf contrefactuels portent sur les memes menages, dans le meme ordre.
+# Reutiliser les memes poids Rao-Wu permet donc une inference appariee entre
+# reformes et hypotheses d'informalite, tout en evitant neuf tirages identiques.
+set.seed(20241500)
+poids_bootstrap_hh <- replicate(
+  REPS_BOOT,
+  rao_wu_weights(base, "hhweight", "grappe", "strata")
+)
+
+resume_fgt <- function(hh, poids_bootstrap = poids_bootstrap_hh) {
+  reps <- ncol(poids_bootstrap)
+  point <- function(y) {
+    c(
+      p0 = fgt_index(y, hh$zref, hh$pcweight, 0),
+      p1 = fgt_index(y, hh$zref, hh$pcweight, 1),
+      p2 = fgt_index(y, hh$zref, hh$pcweight, 2)
+    )
+  }
+  avant <- point(hh$yd_pc)
+  apres_brut <- point(hh$yd_pc_sans_recyclage)
+  apres_recycle <- point(hh$yd_pc_recyclage)
+
+  boot <- vapply(seq_len(reps), function(b) {
+    w_hh <- poids_bootstrap[, b]
+    w_pc <- w_hh * hh$hhsize
+    recette_b <- sum(hh$delta_vat_nominal * w_hh, na.rm = TRUE)
+    transfert_b <- recette_b / sum(w_pc, na.rm = TRUE)
+    y_recycle_b <- hh$yd_pc_sans_recyclage + transfert_b * hh$def_spa
+    p_avant <- vapply(0:2, function(a) {
+      fgt_index(hh$yd_pc, hh$zref, w_pc, a)
+    }, numeric(1))
+    c(
+      brut = vapply(0:2, function(a) {
+        fgt_index(hh$yd_pc_sans_recyclage, hh$zref, w_pc, a)
+      }, numeric(1)) - p_avant,
+      recycle = vapply(0:2, function(a) {
+        fgt_index(y_recycle_b, hh$zref, w_pc, a)
+      }, numeric(1)) - p_avant
+    )
+  }, numeric(6))
+
+  delta_point <- rbind(
+    sans_recyclage = apres_brut - avant,
+    recyclage_universel = apres_recycle - avant
+  )
+  noms_boot <- c("brut", "recycle")
+
+  purrr::map_dfr(seq_len(2), function(i) {
+    lignes <- (3 * (i - 1) + 1):(3 * i)
+    tibble::tibble(
+      recyclage = rownames(delta_point)[i],
+      indicateur = c("P0", "P1", "P2"),
+      avant = avant,
+      apres = if (i == 1) apres_brut else apres_recycle,
+      delta = delta_point[i, ],
+      ic95_bas = apply(boot[lignes, , drop = FALSE], 1, stats::quantile, 0.025),
+      ic95_haut = apply(boot[lignes, , drop = FALSE], 1, stats::quantile, 0.975),
+      methode = "Rao-Wu rescaled bootstrap",
+      repetitions = reps,
+      bloc_bootstrap = noms_boot[i]
+    )
+  })
+}
+
+fgt_national <- purrr::imap_dfr(combinaisons, function(hh, cle) {
+  resultat <- resume_fgt(hh)
+  dplyr::mutate(
+    resultat,
+    scenario = hh$scenario[1],
+    hypothese = hh$hypothese[1],
+    .before = 1
   )
 })
 
-# ── 7. TABLES NATIONALES ──────────────────────────────────────────────────────
-fgt_national <- purrr::map_dfr(results, "fgt_nat")
-
-message("\n=== FGT national — impact des scénarios de réforme ===")
-print(fgt_national %>% select(scenario, concept, p0, delta_p0, p1, p2))
-
-export_excel(fgt_national,
-             file.path(TABLES, "15", "15_01_fgt_reform_national.xlsx"))
-
-# ── 8. CHARGE PAR QUINTILE ────────────────────────────────────────────────────
-burden_quintile <- purrr::map_dfr(results, "burden_q")
-
-message("\n=== Charge TVA par quintile (scénario S_all) ===")
-print(burden_quintile %>%
-  filter(scenario == "S_all") %>%
-  select(quintile, delta_vat_mean, burden_rel_mean, vat_share_q))
-
-export_excel(burden_quintile,
-             file.path(TABLES, "15", "15_02_burden_by_quintile.xlsx"))
-
-# ── 9. FGT PAR QUINTILE ───────────────────────────────────────────────────────
-fgt_quintile <- purrr::map_dfr(results, "fgt_q")
-
-export_excel(fgt_quintile,
-             file.path(TABLES, "15", "15_03_fgt_by_quintile.xlsx"))
-
-# ── 10. NOUVEAUX PAUVRES ──────────────────────────────────────────────────────
-np_table <- purrr::map_dfr(names(results), function(sc) {
-  hh <- results[[sc]]$hh
+burden_quintile <- purrr::map_dfr(combinaisons, function(hh) {
   hh %>%
-    group_by(quintile) %>%
-    summarise(
-      np_pond = sum(new_poor * hhweight, na.rm = TRUE),
+    dplyr::group_by(quintile) %>%
+    dplyr::summarise(
+      charge_moyenne_nominale = stats::weighted.mean(
+        delta_vat_nominal, hhweight
+      ),
+      charge_relative = stats::weighted.mean(charge_relative, pcweight),
+      recette_nominale = sum(delta_vat_nominal * hhweight),
       .groups = "drop"
     ) %>%
-    mutate(scenario = sc)
-}) %>%
-  pivot_wider(names_from = scenario, values_from = np_pond, names_prefix = "np_")
+    dplyr::mutate(
+      scenario = hh$scenario[1], hypothese = hh$hypothese[1],
+      part_recette = recette_nominale / sum(recette_nominale)
+    )
+})
 
-np_totaux <- purrr::map_dfr(names(results), function(sc) {
-  hh <- results[[sc]]$hh
-  tibble(
-    scenario    = sc,
-    np_total    = sum(hh$new_poor * hh$hhweight, na.rm = TRUE),
-    np_q1       = sum(hh$new_poor * hh$hhweight * (hh$quintile == 1), na.rm = TRUE),
-    np_q2       = sum(hh$new_poor * hh$hhweight * (hh$quintile == 2), na.rm = TRUE),
-    share_q1_q2 = (np_q1 + np_q2) / np_total
+fgt_quintile <- purrr::map_dfr(combinaisons, function(hh) {
+  hh %>%
+    dplyr::group_by(quintile) %>%
+    dplyr::summarise(
+      p0_avant = fgt_index(yd_pc, zref, pcweight, 0),
+      p0_sans_recyclage = fgt_index(
+        yd_pc_sans_recyclage, zref, pcweight, 0
+      ),
+      p0_recyclage = fgt_index(yd_pc_recyclage, zref, pcweight, 0),
+      .groups = "drop"
+    ) %>%
+    dplyr::mutate(
+      scenario = hh$scenario[1], hypothese = hh$hypothese[1],
+      delta_p0_brut = p0_sans_recyclage - p0_avant,
+      delta_p0_recycle = p0_recyclage - p0_avant
+    )
+})
+
+nouveaux_pauvres <- purrr::map_dfr(combinaisons, function(hh) {
+  pauvre_avant <- hh$yd_pc < hh$zref
+  tibble::tibble(
+    scenario = hh$scenario[1],
+    hypothese = hh$hypothese[1],
+    recyclage = c("sans_recyclage", "recyclage_universel"),
+    nouveaux_menages_pauvres = c(
+      sum((!pauvre_avant & hh$yd_pc_sans_recyclage < hh$zref) * hh$hhweight),
+      sum((!pauvre_avant & hh$yd_pc_recyclage < hh$zref) * hh$hhweight)
+    ),
+    nouveaux_individus_pauvres = c(
+      sum((!pauvre_avant & hh$yd_pc_sans_recyclage < hh$zref) * hh$pcweight),
+      sum((!pauvre_avant & hh$yd_pc_recyclage < hh$zref) * hh$pcweight)
+    ),
+    individus_sortis_pauvrete = c(
+      0,
+      sum((pauvre_avant & hh$yd_pc_recyclage >= hh$zref) * hh$pcweight)
+    )
   )
 })
 
-message("\n=== Nouveaux pauvres générés par la réforme ===")
-print(np_totaux %>%
-  mutate(across(c(np_total, np_q1, np_q2),
-                ~format(round(.), big.mark = ","))))
-
-export_excel(np_table,
-             file.path(TABLES, "15", "15_04a_nouveaux_pauvres_par_quintile.xlsx"))
-export_excel(np_totaux,
-             file.path(TABLES, "15", "15_04b_nouveaux_pauvres_totaux.xlsx"))
-
-# ── 11. QUINTILE LE PLUS TOUCHÉ (résumé) ─────────────────────────────────────
-message("\n=== Quintile le plus touché par la réforme (charge relative) ===")
-purrr::iwalk(results, function(res, sc) {
-  q_max <- res$burden_q %>%
-    filter(quintile == quintile[which.max(burden_rel_mean)])
-  message(sprintf(
-    "  %-12s : Q%d — charge relative %.2f%% (%.0f FCFA/ménage)",
-    sc, q_max$quintile, q_max$burden_rel_mean * 100, q_max$delta_vat_mean
-  ))
+budget <- purrr::map_dfr(combinaisons, function(hh) {
+  transferts <- hh$transfert_pc_nominal[1] *
+    sum(hh$pcweight, na.rm = TRUE)
+  tibble::tibble(
+    scenario = hh$scenario[1], hypothese = hh$hypothese[1],
+    recette_nominale = hh$recette_nominale[1],
+    transfert_pc_nominal = hh$transfert_pc_nominal[1],
+    transferts_totaux = transferts,
+    solde = hh$recette_nominale[1] - transferts
+  )
 })
 
-# ── 12. FIGURE — Charge relative par quintile ────────────────────────────────
-fig_burden <- ggplot(
+export_excel(
+  fgt_national,
+  file.path(TABLES, "15", "15_01_fgt_reform_national.xlsx")
+)
+export_excel(
   burden_quintile,
-  aes(x = factor(quintile), y = burden_rel_mean * 100, fill = scenario)
-) +
-  geom_col(position = "dodge", width = 0.75) +
-  scale_fill_manual(values = c(
-    S_agri     = "darkgreen",
-    S_commerce = "steelblue",
-    S_all      = "firebrick"
-  ),
-  labels = c(
-    S_agri     = "Agricole (A01_02+A03)",
-    S_commerce = "Commerce (G)",
-    S_all      = "Tous produits à 0%"
-  )) +
-  labs(
-    title    = "Charge de la réforme TVA par quintile de consommation",
-    subtitle = sprintf(
-      "Hausse de 0%% à %.0f%% — Côte d'Ivoire, EHCVM 2021",
-      TAUX_REFORME * 100
-    ),
-    x    = "Quintile (Q1 = plus pauvre)",
-    y    = "Charge relative (% du revenu de consommation)",
-    fill = "Scénario",
-    caption = paste0(
-      "Charge relative = TVA additionnelle / (pcexp × hhsize).\n",
-      "Pondérations sondage. Q1 = 20% les plus pauvres."
-    )
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(legend.position = "bottom",
-        plot.caption    = element_text(size = 7))
-
-export_fig(fig_burden,
-           file.path(FIGS, "fig_reform_burden_quintile.png"))
-
-# ── 13. FIGURE — ΔP0 par quintile × scénario ─────────────────────────────────
-fig_fgt <- ggplot(
+  file.path(TABLES, "15", "15_02_burden_by_quintile.xlsx")
+)
+export_excel(
   fgt_quintile,
-  aes(x = factor(quintile), y = delta_p0 * 100, fill = scenario)
-) +
-  geom_col(position = "dodge", width = 0.75) +
-  scale_fill_manual(values = c(
-    S_agri     = "darkgreen",
-    S_commerce = "steelblue",
-    S_all      = "firebrick"
-  ),
-  labels = c(
-    S_agri     = "Agricole (A01_02+A03)",
-    S_commerce = "Commerce (G)",
-    S_all      = "Tous produits à 0%"
-  )) +
-  labs(
-    title    = "Impact de la réforme TVA sur le taux de pauvreté par quintile",
-    subtitle = sprintf(
-      "ΔP0 (pp) — hausse de 0%% à %.0f%% — Côte d'Ivoire, EHCVM 2021",
-      TAUX_REFORME * 100
-    ),
-    x    = "Quintile (Q1 = plus pauvre)",
-    y    = "\u0394 P0 (points de pourcentage)",
-    fill = "Scénario",
-    caption = paste0(
-      "Pondérations individu (hhweight × hhsize).\n",
-      "P0 avant réforme = 37.5% (cible officielle EHCVM)."
+  file.path(TABLES, "15", "15_03_fgt_by_quintile.xlsx")
+)
+export_excel(
+  nouveaux_pauvres,
+  file.path(TABLES, "15", "15_04_nouveaux_pauvres_reform.xlsx")
+)
+export_excel(
+  budget,
+  file.path(TABLES, "15", "15_05_budget_neutral_recycling.xlsx")
+)
+
+hh_all <- purrr::map_dfr(combinaisons, function(hh) {
+  hh %>%
+    dplyr::select(
+      hhid, grappe, strata, hhweight, pcweight, hhsize, decile, quintile,
+      yd_pc, zref, def_spa, delta_vat_nominal, delta_vat_reel,
+      charge_relative, transfert_pc_nominal,
+      yd_pc_sans_recyclage, yd_pc_recyclage, scenario, hypothese
+    )
+})
+save_parquet(hh_all, file.path(SILVER, "15", "reform_vat_hh.parquet"))
+
+fig_burden <- burden_quintile %>%
+  dplyr::filter(hypothese == "S3") %>%
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = factor(quintile), y = 100 * charge_relative, fill = scenario
     )
   ) +
-  theme_minimal(base_size = 11) +
-  theme(legend.position = "bottom",
-        plot.caption    = element_text(size = 7))
+  ggplot2::geom_col(position = "dodge", width = 0.75) +
+  ggplot2::scale_fill_manual(
+    values = c(S_agri = "#2F6B4F", S_commerce = "#4472A8", S_all = "#B0473C")
+  ) +
+  ggplot2::labs(
+    title = "Charge brute de la reforme TVA par quintile",
+    subtitle = "Scenario central S3 : paiement et transmission par produit et decile",
+    x = "Quintile", y = "Charge additionnelle (% du revenu disponible)",
+    fill = NULL,
+    caption = "Taxation de la vente finale a 9 %, vecteur de TVA incorporee c constant. Montants convertis par le deflateur spatial EHCVM."
+  ) +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(legend.position = "bottom")
 
-export_fig(fig_fgt,
-           file.path(FIGS, "fig_reform_fgt_impact.png"))
+fig_fgt <- fgt_national %>%
+  dplyr::filter(hypothese == "S3", indicateur == "P0") %>%
+  ggplot2::ggplot(
+    ggplot2::aes(x = scenario, y = 100 * delta, fill = recyclage)
+  ) +
+  ggplot2::geom_col(position = "dodge", width = 0.7) +
+  ggplot2::geom_errorbar(
+    ggplot2::aes(ymin = 100 * ic95_bas, ymax = 100 * ic95_haut),
+    position = ggplot2::position_dodge(width = 0.7), width = 0.16
+  ) +
+  ggplot2::scale_fill_manual(
+    values = c(sans_recyclage = "#B0473C", recyclage_universel = "#2F6B4F")
+  ) +
+  ggplot2::labs(
+    title = "Effet de la reforme TVA sur la pauvrete",
+    subtitle = "Scenario central S3, avec intervalles a 95 % Rao-Wu",
+    x = NULL, y = "Variation de P0 (points de pourcentage)", fill = NULL
+  ) +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(legend.position = "bottom")
 
-# ── 14. SAUVEGARDE PARQUET ────────────────────────────────────────────────────
-hh_all <- purrr::imap_dfr(results, function(res, sc) {
-  res$hh %>%
-    select(hhid, hhweight, quintile, decile, pcexp, zref,
-           delta_vat, pcexp_reform, burden_rel,
-           poor_pre, poor_reform, new_poor) %>%
-    mutate(scenario = sc)
-})
+export_fig(fig_burden, file.path(FIGS, "fig_reform_burden_quintile.png"))
+export_fig(fig_fgt, file.path(FIGS, "fig_reform_fgt_impact.png"))
 
-save_parquet(hh_all,
-             file.path(SILVER_15, "reform_vat_hh.parquet"))
-
-message("\nÉtape 15 terminée — outputs dans ", SILVER_15, " et ", file.path(TABLES, "15"))
+message("Etape 15 terminee : vente finale a 9 %, c constant, S2/S3 et recyclage neutre.")

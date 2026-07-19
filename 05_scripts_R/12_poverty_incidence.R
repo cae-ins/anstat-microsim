@@ -39,16 +39,17 @@ run_poverty_incidence <- function(paths) {
     file.path(paths$SILVER, "06", "fiscal_sensitivity_taxation.parquet")
   )
 
+  # pcexp et hhsize sont déjà présents dans la sortie de sensibilité.
+  # Seul le seuil de pauvreté est ajouté ici, afin d'éviter les suffixes .x/.y.
   welfare <- load_raw_dta(
     "ehcvm_welfare_2b_CIV2021.dta",
-    col_select = c("hhid", "pcexp", "zref", "hhsize")
+    col_select = c("hhid", "zref")
   )
   assert_required_columns(
     welfare,
-    c("hhid", "pcexp", "zref", "hhsize"),
+    c("hhid", "zref"),
     object_name = "ehcvm_welfare_2b_CIV2021.dta"
   )
-
   hh <- hh_vat %>%
     dplyr::left_join(welfare, by = "hhid") %>%
     dplyr::mutate(

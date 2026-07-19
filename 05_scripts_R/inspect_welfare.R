@@ -1,5 +1,5 @@
 library(haven)
-df <- read_dta("C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/Dataout/ehcvm_welfare_2b_CIV2021.dta")
+df <- read_dta(file.path("01_data_sources", "Dataout", "ehcvm_welfare_2b_CIV2021.dta"))
 cat("Rows:", nrow(df), "\n")
 cat("Columns:", paste(names(df), collapse=", "), "\n")
 needed <- c("hhid","hhsize","eqadu1","eqadu2","hgender","hage","heduc","grappe","region")

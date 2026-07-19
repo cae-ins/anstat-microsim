@@ -1,0 +1,2654 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{natbib}
+\usepackage[french]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+\usepackage{threeparttable}
+\usepackage{caption}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit}
+\usepackage[colorlinks=true, linkcolor=blue!60!black, citecolor=blue!60!black, urlcolor=blue!60!black]{hyperref}
+
+\graphicspath{{../../07_reports/figures/}}
+
+\captionsetup{font=small, labelfont=up}
+\addto\captionsfrench{\renewcommand{\tablename}{Tableau}}
+\setlength{\parskip}{0.2em}
+\onehalfspacing
+
+\title{\textbf{Fiscalité, informalité, transferts et pauvreté en Côte d'Ivoire :\\
+une analyse d'incidence sur l'EHCVM 2021}\thanks{%
+Document de travail de la Cellule d'Analyses Économiques (ANStat). Les sources,
+les hypothèses et la procédure de réplication sont documentées en
+annexe~\ref{annexe:pipeline}. Les erreurs éventuelles restent les nôtres.}}
+
+\author{Franck MIGONE, Djaha Armand et Lebe N'Dre\\
+\normalsize ANStat}
+
+\date{Juillet 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent Cette étude mesure l'incidence des impôts et des dépenses publiques
+en Côte d'Ivoire à partir de l'EHCVM 2021 et du cadre \emph{Commitment to
+Equity}. Elle combine les barèmes fiscaux, les budgets exécutés et le tableau
+national des ressources et des emplois, en tenant compte des achats informels.
+Dans le scénario central, le Gini passe de 0,3414 pour le
+revenu primaire à 0,3168 pour le revenu final. Mais la pauvreté monétaire atteint
+42,0~\% au revenu consommable, contre 37,7~\% au revenu primaire, et 4,34~\% de
+la population passe sous le seuil national. Les services publics ramènent
+l'indicateur du revenu final à 33,9~\%, mais ne procurent pas de liquidités aux
+ménages. Enfin, une taxe de 9~\% sur la vente finale de certains produits, simulée à
+TVA incorporée constante, accroît la pauvreté de 0,47 point sans compensation
+et la réduit de 0,23 point lorsque la recette est redistribuée.
+\end{abstract}
+
+\vspace{0.5em}
+\noindent\textbf{Mots-clés :} incidence fiscale, TVA, transferts, dépenses
+publiques, informalité, pauvreté, microsimulation, Côte d'Ivoire.\\
+\textbf{Codes JEL :} H22, D31, I32, O17.
+
+\newpage
+
+%=============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+En Côte d'Ivoire, l'action publique réduit les écarts de niveau de vie sans
+protéger tous les ménages contre la pauvreté monétaire. Dans le scénario central
+de cette étude, le coefficient de Gini passe de 0,3414 pour le revenu primaire à
+0,3168 lorsque les services publics d'éducation et de santé sont ajoutés. Avant
+cette valorisation en nature, le taux de pauvreté atteint pourtant 42,0~\% au
+revenu consommable, contre 37,7~\% au revenu primaire. Cette tension est au cœur
+de l'analyse : un système fiscal peut réduire l'inégalité relative tout en
+abaissant les ressources monétaires de ménages proches du seuil de pauvreté.
+
+Nous mesurons l'incidence des impôts et des dépenses publiques en suivant, pour
+chaque ménage, la séquence de revenus du cadre \emph{Commitment to Equity} (CEQ)
+\citep{lustig2022}. L'analyse combine l'EHCVM 2021, les barèmes fiscaux, les
+budgets exécutés, le Tarif extérieur commun de la CEDEAO et le tableau ivoirien
+des ressources et des emplois de 2023. Elle porte sur 12~965 ménages,
+64~491 personnes et 787~410 lignes de dépenses. Les impôts indirects comprennent
+la TVA, les accises et les droits de douane; les dépenses publiques couvrent les
+transferts monétaires, les réductions de prix de l'eau et de l'électricité,
+ainsi que les services publics d'éducation et de santé. La consommation par tête
+de l'enquête sert de point d'entrée pour le revenu disponible, car elle est
+mieux mesurée que le revenu courant. Les concepts antérieurs sont reconstruits
+à rebours et cette convention est explicitement testée pour le traitement des
+pensions.
+
+\subsection*{Repères de lecture}
+
+Les revenus CEQ sont des étapes comptables, non des catégories administratives
+de ménages. Chaque passage ajoute un groupe d'instruments afin d'en isoler
+l'effet sur le niveau de vie, la pauvreté et l'inégalité.
+
+\begin{table}[h]
+\centering
+\caption{La logique de lecture de la cascade CEQ}
+\label{tab:guide-lecture}
+\small
+\begin{tabularx}{\textwidth}{>{\RaggedRight\arraybackslash}p{0.22\textwidth}
+                            >{\RaggedRight\arraybackslash}p{0.31\textwidth}
+                            >{\RaggedRight\arraybackslash}X}
+\toprule
+Passage & Opérations ajoutées & Question économique \\
+\midrule
+Revenu primaire $\rightarrow$ revenu disponible
+ & Retrancher impôts directs et cotisations; ajouter transferts monétaires
+ & De combien l'État modifie-t-il les ressources monétaires directement
+   disponibles? \\
+Revenu disponible $\rightarrow$ revenu consommable
+ & Retrancher TVA, accises et droits de douane; ajouter réductions publiques de prix
+ & Quel pouvoir d'achat reste-t-il après les taxes et les aides incorporées
+   à la consommation? \\
+Revenu consommable $\rightarrow$ revenu final
+ & Ajouter la valeur des services publics d'éducation et de santé
+ & Que reçoit le ménage lorsque les prestations en nature sont aussi prises
+   en compte? \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Trois distinctions évitent les principaux contresens. Premièrement, la TVA
+\emph{directe} est contenue dans l'achat final. La TVA \emph{non déductible} est
+payée sur un intrant sans pouvoir être récupérée par l'entreprise; lorsqu'elle
+se transmet de branche en branche jusqu'au prix final, nous la qualifions de TVA
+\emph{enchâssée}. Deuxièmement, les conventions PDI et PGT ne séparent pas deux
+populations. Elles classent les mêmes pensions contributives soit comme un
+revenu différé déjà acquis (PDI), soit comme un transfert public (PGT).
+Troisièmement, un impôt est dit progressif lorsque sa charge augmente plus vite
+que le revenu de référence. Cette propriété ne garantit ni une baisse de la
+pauvreté ni un gain de pouvoir d'achat. Le lexique de la
+section~\ref{sec:lexique} définit les termes et les sigles avant leur
+formalisation.
+
+La mesure de la TVA distingue le droit fiscal de la collecte effective. Le
+scénario central, S3, fait varier la probabilité de taxation selon la fonction de
+consommation et le décile du ménage. Une variante par milieu de résidence, S2,
+et la transmission intégrale encadrent cette hypothèse. La TVA non déductible est
+ensuite propagée par un modèle de prix de Leontief qui sépare intrants locaux et
+importés et replace les emplois du TRE aux prix de base. Le TRE 2023 aux prix
+courants est la matrice de référence; sa version à prix constants et la base
+internationale ICIO 2020 de l'OCDE servent de contrôles.
+
+Les résultats montrent d'abord que l'informalité des circuits de vente modifie
+fortement la charge estimée. Sous S3, la TVA directe atteint 693 milliards de
+FCFA, contre 1~387 milliards sous transmission intégrale. Le TRE ajoute
+214 milliards de TVA enchâssée; les variantes nationale à prix constants et
+internationale donnent des masses totales très proches. Les accises et les
+droits de douane directement contenus dans les achats ajoutent respectivement
+67,9 et 185,1 milliards. Après l'ensemble des interventions monétaires, le
+revenu consommable place 42,0~\% de la population sous le seuil national, et
+4,34~\% de la population franchit ce seuil. La progressivité relative de plusieurs
+prélèvements ne suffit donc pas à protéger les ménages situés près du seuil.
+
+Les prélèvements directs sont plus concentrés, mais leur assiette est étroite.
+Le scénario central produit 225,5 milliards de FCFA d'impôt sur le revenu des
+personnes physiques et 162,4 milliards de cotisations. Les paiements publics
+directs atteignent 125,8 milliards, dont 27,1 milliards pour le Programme de
+filets sociaux productifs. Les services publics nets des paiements des familles
+représentent 1~301,6 milliards pour l'éducation et 81,85 milliards pour la
+santé. Ils expliquent une part importante de la baisse du Gini, mais leur coût de
+production n'est pas un revenu liquide. Le taux de pauvreté de 33,9~\% associé
+au revenu final est ainsi un indicateur comptable qui ne doit pas être confondu
+avec la pauvreté monétaire.
+
+Enfin, l'usage des recettes change le diagnostic d'une réforme de TVA. Une taxe
+de 9~\% sur la vente finale de certains produits collecte 97,2 milliards sous
+S3 et accroît la pauvreté de 0,47 point si la recette n'est pas restituée. Le
+calcul maintient constante la TVA déjà incorporée dans les coûts : il ne simule
+pas l'ouverture de nouveaux droits à déduction. Un transfert uniforme de
+3~260 FCFA par personne, exactement financé par cette recette, réduit au
+contraire la pauvreté de 0,23 point. Ce contrefactuel montre qu'une réforme doit
+être évaluée avec l'usage de ses recettes.
+
+\subsection*{Positionnement dans la littérature}
+
+Le premier point d'ancrage est la littérature sur l'incidence fiscale CEQ. Le
+manuel dirigé par \citet{lustig2022} organise la comparaison des revenus avant
+et après impôts, transferts et services publics. \citet{higgins2016} montrent
+qu'un système peut réduire l'inégalité tout en appauvrissant des ménages lorsque
+les taxes indirectes dépassent les paiements qu'ils reçoivent. Les applications
+au Ghana \citep{younger2016}, à l'Éthiopie \citep{hill2017} et à trois pays
+d'Afrique de l'Ouest francophone \citep{akim2020} établissent la pertinence de
+ce diagnostic sur le continent. La présente étude actualise le cas ivoirien sur
+l'EHCVM 2021 et construit la séquence jusqu'au revenu final, tout en publiant les
+conventions de pension, les champs couverts et les écarts avec les agrégats
+administratifs.
+
+Le deuxième point d'ancrage concerne l'informalité et les taxes sur la
+consommation. \citet{bachas2024} montrent que la part des achats informels tend
+à diminuer avec le revenu et que ce profil peut rendre les taxes à la
+consommation plus progressives que ne l'indiquent les seuls taux légaux. Les
+exonérations créent aussi de la TVA non récupérable qui peut se transmettre par
+les chaînes de production \citep{chandler2025}. Nous réunissons ces deux
+mécanismes : trois scénarios explicites décrivent la taxation effective des
+achats, tandis qu'une concordance relie les postes de consommation aux
+48 produits du TRE pour mesurer la charge incorporée aux prix.
+
+Le troisième point d'ancrage compare les exonérations aux transferts. Dans six
+pays à revenu faible ou intermédiaire, \citet{warwick2022} montrent que les taux
+réduits et les exonérations ciblent imparfaitement les pauvres et qu'un transfert
+financé par l'élargissement de l'assiette peut mieux les protéger. La simulation
+ivoirienne reprend cette comparaison en tenant compte de l'informalité des
+achats. Les intervalles de confiance reposent sur 500 réplications du bootstrap
+Rao--Wu \citep{raowu1988}; la recette et le transfert sont réestimés dans chaque
+réplication.
+
+La section suivante décrit le système fiscal de 2021. Les sections consacrées
+aux données et à la méthode expliquent ensuite les variables, les conventions et
+les calculs avant la présentation des résultats. Les simulations de réforme
+précèdent l'examen des limites, puis la conclusion tire les implications pour la
+conception d'un ensemble cohérent de prélèvements et de paiements publics.
+
+%=============================================================================
+\section{Contexte institutionnel : le système fiscal ivoirien en 2021}
+\label{sec:contexte}
+
+La structure fiscale ivoirienne repose sur les impôts indirects. La TVA,
+instituée au taux normal de 18~\%, coexiste avec un taux réduit de 9~\%
+--- appliqué notamment au lait, aux pâtes alimentaires et aux équipements
+solaires --- et avec un vaste champ d'exonérations couvrant les produits
+alimentaires de base, la santé et l'éducation. La Banque mondiale
+\citep{worldbank2019} estime que ces régimes dérogatoires expliquent l'essentiel
+de l'écart entre les recettes potentielles et les recettes effectives de TVA, et
+en fait le premier gisement de mobilisation fiscale du pays. Cette architecture
+a une conséquence directe pour l'analyse d'incidence : le taux moyen pondéré du
+panier de consommation est très inférieur au taux légal, et il varie fortement
+le long de la distribution des niveaux de vie, puisque la part des produits
+exonérés décroît avec le revenu.
+
+Le deuxième trait structurant est l'informalité. L'essentiel de l'emploi et une
+grande partie du commerce de détail échappent à l'enregistrement fiscal. Du côté
+des achats, cela signifie qu'une fraction importante de la dépense des ménages
+--- surtout des ménages pauvres et ruraux --- est réalisée auprès de vendeurs
+qui ne collectent pas la TVA ; l'hypothèse de transmission complète du taux
+statutaire aux prix payés constitue donc une borne supérieure de la charge.
+Du côté des revenus, l'informalité restreint l'assiette des prélèvements
+directs : seuls les salariés du secteur formel --- administration, entreprises
+enregistrées --- subissent la retenue à la source de l'impôt sur les salaires et
+les cotisations sociales.
+
+L'imposition des salaires en 2021 combine trois prélèvements cédulaires
+successifs. L'impôt sur les salaires (IS) frappe la base imposable ---
+c'est-à-dire 80~\% du salaire brut, après l'abattement forfaitaire de 20~\% pour
+frais professionnels --- au taux de 1,5~\%, soit 1,2~\% du brut. La contribution
+nationale (CN) applique à la même base un barème progressif par tranches
+mensuelles (0~\% jusqu'à 50~000 FCFA, puis 1,5~\%, 5~\% et 10~\% au-delà de
+200~000 FCFA). L'impôt général sur le revenu (IGR) s'ajoute enfin selon une
+logique de quotient familial : la base, nette d'IS et de CN, est divisée par un
+nombre de parts plafonné à cinq (une part pour un célibataire, deux pour un
+couple marié, une demi-part par enfant à charge), soumise à un barème mensuel en
+dix tranches, puis l'impôt par part est multiplié par le nombre de parts et
+réduit de 15~\%. S'y ajoutent la cotisation retraite CNPS à la charge du salarié
+(6,3~\% du brut, plafonné à 1~647~315 FCFA par mois) et la contribution à la
+Couverture Maladie Universelle (CMU), fixée à 1~000 FCFA par mois et par adulte
+contributif participant. La participation est simulée selon les cibles et la
+couverture déclarée dans l'enquête : les personnes dont l'assurance maladie est
+financée par un organisme public forment le vivier observable, ensuite séparé
+entre pauvres non contributifs et adultes non pauvres contributifs. Les cibles,
+la règle de tirage et la variante universelle sont détaillées en
+section~\ref{sec:methode}. L'annexe~\ref{annexe:baremes} reproduit les barèmes.
+
+La fiscalité indirecte ne se limite pas à la TVA. Le TEC CEDEAO répartit les
+produits importés entre les bandes de 0, 5, 10, 20 et 35~\%; les accises 2021
+frappent notamment alcools, tabacs, produits pétroliers, boissons non
+alcoolisées et certains cosmétiques. Côté dépenses, le PSSN verse des transferts
+monétaires ciblés tandis que les bourses et les branches familiales et accidents
+du travail de la protection sociale complètent les transferts directs. Ces
+instruments sont traités séparément parce que leur assiette, leur mécanisme de
+ciblage et leur incidence économique diffèrent.
+
+%=============================================================================
+\section{Données}
+\label{sec:donnees}
+
+Nous utilisons l'EHCVM 2021 de la Côte d'Ivoire, enquête nationale représentative
+conduite dans le cadre harmonisé de l'Union économique et monétaire
+ouest-africaine (UEMOA). Le module de consommation fournit
+787~410 observations au niveau ménage~$\times$~produit~$\times$~mode
+d'acquisition pour 12~965 ménages. Le fichier individuel couvre 64~491 personnes.
+Le fichier officiel de bien-être apporte la consommation annuelle par tête, le
+déflateur spatial, le seuil de pauvreté officiel, les poids d'enquête, les
+grappes et les strates. Le revenu disponible de référence est donc l'agrégat de
+consommation par tête dans les prix réels de l'enquête; les charges fiscales,
+initialement calculées en FCFA courants, sont converties avec le déflateur
+spatial avant d'en être soustraites.
+
+Le questionnaire est mobilisé au-delà du fichier harmonisé de bien-être. Le
+tableau~\ref{tab:variables-questionnaire} présente les informations par leur
+libellé et précise leur fonction dans la simulation. Il permet de distinguer
+les variables effectivement utilisées des informations déjà repérées pour les
+étapes futures, sans imposer au lecteur les noms techniques de la base.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Informations du questionnaire mobilisées dans l'analyse}
+\label{tab:variables-questionnaire}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3cm}
+  >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+Module & Informations observées & Utilisation dans le papier \\
+\midrule
+Niveau de vie & Consommation annuelle par tête, déflateur spatial, seuil de
+pauvreté, poids, strate et grappe & Ancrage de $Y_D$, classement des ménages,
+prix réels, pauvreté et inférence de sondage \\
+Consommation & Produit consommé, valeur annuelle et mode d'acquisition &
+Assiette de TVA, taux statutaire, scénario de taxation effective et
+concordance avec les secteurs du TRE \\
+Emploi principal & Nombre de mois travaillés, salaire et périodicité,
+bulletin de salaire, cotisation à la Caisse générale de retraite des agents de
+l'État (CGRAE) ou à la CNPS, congés payés, jours de
+congé annuel, congé maladie et congé de maternité ou paternité & Annualisation
+du salaire et construction du scénario central d'assujettissement
+multi-critères \\
+Emploi secondaire & Existence de l'emploi, profession, catégorie d'activité,
+salaire et périodicité & Complément de salaire et identification des emplois
+secondaires susceptibles de faire l'objet d'une retenue \\
+Santé et assurance & Couverture par une assurance maladie et organisme qui la
+finance & Vivier observable de la CMU et distinction contributive ou non
+contributive \\
+Revenus et programmes & Pensions, revenus fonciers, dividendes, intérêts,
+bourses, transferts publics, filets sociaux et transferts privés & Pensions,
+PSSN, bourses, prestations familiales, accidents du travail et scénarios PDI/PGT \\
+Logement et énergie & Dépenses d'eau, d'électricité et de carburants; type
+d'abonnement électrique & Attribution des réductions de prix et robustesses \\
+Éducation et santé & Scolarisation, type d'établissement, recours aux soins,
+prestataire et dépenses acquittées & Attribution des dépenses publiques,
+paiements directs et bénéfices nets \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : les transferts privés reçus sont conservés séparément des
+transferts publics non contributifs. Les codes informatiques et la
+correspondance exacte avec les fichiers sources relèvent du matériel de
+réplication, non de la définition économique des variables.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Cet inventaire détermine les sources mobilisées dans la méthode. Les pensions et
+les paiements publics séparent les concepts de revenu monétaire; les modules de
+logement, d'éducation et de santé identifient les ménages auxquels sont attribués
+les aides de prix et les services publics, complétés par les paramètres externes
+documentés ci-dessous.
+Les envois reçus des proches restent des transferts privés et ne sont pas
+comptés parmi les transferts publics non contributifs.
+
+Le tableau~\ref{tab:descriptif} donne les principales dimensions de
+l'échantillon après jointure. Les pourcentages de salariés et d'assujettis sont
+calculés sur l'ensemble de la population, enfants compris; ils décrivent donc la
+portée démographique des prélèvements, non le taux de formalité de la population
+active. Les poids individuels sont les poids ménage appliqués à chaque membre;
+les statistiques de ménages conservent le poids ménage sans multiplication par
+la taille.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Statistiques descriptives de l'échantillon EHCVM 2021}
+\label{tab:descriptif}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Zone & Ménages & Personnes & Taille du & Âge & Moins de & Assujettis \\
+ & observés & observées & ménage & moyen & 18 ans (\%) & centraux (\%) \\
+\midrule
+National & 12~965 & 64~491 & 4,62 & 23,8 & 48,0 & 3,61 \\
+Urbain   &  5~243 & 25~173 & 4,46 & 24,2 & 44,7 & 5,70 \\
+Rural    &  7~722 & 39~318 & 4,82 & 23,3 & 51,6 & 1,29 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : la population pondérée est de 30,09 millions de
+personnes. La part de salariés rémunérés sur l'ensemble de la population vaut
+8,02~\% au niveau national, 11,92~\% en milieu urbain et 3,68~\% en milieu
+rural. Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+La simulation de TVA retient les dépenses déclarées comme achats et comme
+valeurs d'usage. L'agrégat de niveau de vie continue de compter
+l'autoconsommation, les dons et les loyers imputés, mais aucune TVA n'est
+calculée sur ces éléments puisqu'ils ne correspondent pas à un achat monétaire
+taxable. Les dépenses sont winsorisées au 99\textsuperscript{e}
+centile à l'intérieur de chaque produit; les versions au 95\textsuperscript{e}
+et au 99,5\textsuperscript{e} centile sont conservées pour la sensibilité. Le
+traitement par produit évite qu'un seuil dominé par les postes coûteux écrase la
+variation légitime des petits postes. Enfin, chaque poste de consommation est
+apparié à son taux statutaire de 0, 9 ou 18~\%. Le même poste est relié aux
+secteurs entrées--sorties (I/O) par la concordance sectorielle décrite ci-dessous; aucun taux
+sectoriel n'est obtenu par une moyenne non pondérée de correspondances multiples.
+
+%=============================================================================
+\section{Méthodologie}
+\label{sec:methode}
+
+\subsection{Lexique et conventions de lecture}
+\label{sec:lexique}
+
+Le tableau~\ref{tab:lexique} donne le sens précis des termes employés dans la
+suite. Il distingue notamment une taxe prévue par le droit, la taxe
+effectivement contenue dans un prix et la charge économique finalement imputée
+au ménage.
+
+\begin{longtable}{>{\RaggedRight\arraybackslash}p{0.24\textwidth}
+                  >{\RaggedRight\arraybackslash}p{0.70\textwidth}}
+\caption{Lexique minimal de l'analyse}\label{tab:lexique}\\
+\toprule
+Terme & Définition utilisée dans le document \\
+\midrule
+\endfirsthead
+\toprule
+Terme & Définition utilisée dans le document \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+\textbf{Incidence fiscale}
+& Attribution de la charge économique d'un impôt, ou du bénéfice d'une dépense
+publique, aux ménages qui la supportent ou en bénéficient. Elle peut différer
+du contribuable qui verse juridiquement l'impôt à l'administration. \\[0.35em]
+
+\textbf{Assiette, taux statutaire et taux effectif}
+& L'assiette est le montant auquel le droit applique l'impôt. Le taux
+statutaire est celui du barème légal. Le taux effectif rapporte la charge
+réellement simulée au revenu ou à la dépense du ménage; il tient donc compte des
+exonérations, de l'informalité et de la composition du panier. \\[0.35em]
+
+\textbf{TVA directe}
+& Part de taxe sur la valeur ajoutée directement contenue dans le prix toutes
+taxes comprises (TTC) des achats finaux du ménage. Pour un prix TTC et un taux
+$\tau$, cette part est $\tau/(1+\tau)$, modulée ici par la probabilité que la
+transaction soit taxée et que la taxe soit transmise au prix. \\[0.35em]
+
+\textbf{TVA non déductible}
+& TVA payée par une entreprise sur ses intrants mais qu'elle ne peut pas
+récupérer comme crédit de TVA, notamment lorsque sa production est exonérée ou
+vendue hors du circuit déclaratif. Elle devient alors un coût de production. \\[0.35em]
+
+\textbf{TVA enchâssée}
+& Part cumulée de TVA non déductible qui se propage d'un fournisseur à l'autre
+et atteint finalement le prix d'un bien acheté par le ménage. Il ne s'agit pas
+d'un impôt juridique supplémentaire, mais d'une charge incorporée au prix par
+les chaînes de production. \\[0.35em]
+
+\textbf{Accise}
+& Impôt indirect ciblé sur certains produits, par exemple carburants, tabacs,
+alcools, boissons non alcoolisées ou cosmétiques. Il peut être proportionnel à
+la valeur ou fixé par unité physique et s'ajoute, selon la cascade légale, aux
+droits de douane et à la TVA. \\[0.35em]
+
+\textbf{Droit de douane}
+& Impôt acquitté lors de l'importation. La charge imputée au ménage dépend du
+taux du Tarif extérieur commun de la CEDEAO et de la part importée du produit
+consommé. \\[0.35em]
+
+\textbf{TRE et modèle de Leontief}
+& Le tableau des ressources et des emplois (TRE) décrit, dans les comptes
+nationaux, quels produits sont fournis et utilisés par chaque branche. Le
+modèle de prix de Leontief utilise ces relations pour suivre la transmission
+d'un coût d'intrant vers les branches en aval, à quantités et technologies
+fixes. \\[0.35em]
+
+\textbf{EHCVM et COICOP}
+& L'EHCVM est l'Enquête harmonisée sur les conditions de vie des ménages. La
+COICOP est la nomenclature internationale qui classe leur consommation par
+fonction, par exemple alimentation, logement ou transport. \\[0.35em]
+
+\textbf{CGI, TEC et CEDEAO}
+& Le Code général des impôts (CGI) fixe les barèmes nationaux. Le Tarif
+extérieur commun (TEC) répartit les importations entre bandes tarifaires
+communes aux pays de la Communauté économique des États de l'Afrique de l'Ouest
+(CEDEAO). \\[0.35em]
+
+\textbf{ICIO et analyse entrées--sorties}
+& ICIO désigne la base internationale de tableaux entrées--sorties de l'OCDE,
+utilisée ici comme robustesse au TRE national. Une analyse entrées--sorties
+décrit les achats d'intrants entre branches et la transmission des coûts qui en
+résulte. \\[0.35em]
+
+\textbf{CEQ}
+& \emph{Commitment to Equity}: cadre d'analyse qui compare plusieurs concepts
+de revenu avant et après impôts, cotisations, transferts monétaires,
+subventions et prestations publiques en nature. \\[0.35em]
+
+\textbf{Concepts de revenu}
+& $Y_P$ est le revenu primaire reconstruit avant prélèvements directs et
+transferts; $Y_N=Y_P-D-C$ est le revenu net de marché; $Y_G=Y_P+R$ est le revenu
+brut après transferts mais avant prélèvements; $Y_D=Y_N+R$ est le revenu
+disponible; $Y_C=Y_D-I+S$ est le revenu consommable après impôts et subventions
+indirects; $Y_F$ ajoute les prestations publiques en nature. $Y_N$ et $Y_G$
+sont deux branches comptables parallèles, non deux étapes successives. \\[0.35em]
+
+\textbf{PDI}
+& \emph{Pensions as Deferred Income}, soit « pensions comme revenu différé ».
+Les pensions contributives appartiennent au revenu avant intervention et les
+cotisations retraite sont traitées comme de l'épargne. Les pensions ne sont
+donc pas comptées parmi les transferts publics directs. \\[0.35em]
+
+\textbf{PGT}
+& \emph{Pensions as Government Transfer}, soit « pensions comme transfert
+public ». Les pensions sont ajoutées aux transferts directs et les cotisations
+retraite aux prélèvements. PDI et PGT sont deux conventions comptables
+alternatives appliquées aux mêmes ménages, pas deux populations. \\[0.35em]
+
+\textbf{IRPP, CNPS, CGRAE et CMU}
+& L'IRPP désigne ici l'impôt simulé sur les revenus des personnes physiques. La
+CNPS est la Caisse nationale de prévoyance sociale, la CGRAE la Caisse générale
+de retraite des agents de l'État et la CMU la Couverture maladie universelle.
+Les cotisations ne sont pas des impôts au sens juridique,
+mais elles sont retranchées avec les prélèvements directs dans la cascade CEQ. \\[0.35em]
+
+\textbf{PSSN et PMT}
+& Le Programme de filets sociaux productifs (PSSN) verse des transferts
+monétaires aux ménages ciblés. Le \emph{proxy means test} (PMT), ou test
+indirect de niveau de vie, classe les ménages à partir de caractéristiques
+observables lorsque le registre administratif n'est pas disponible. \\[0.35em]
+
+\textbf{Calage}
+& Ajustement explicite d'un effectif, d'un poids ou d'un montant simulé pour
+retrouver une référence administrative. Le document précise toujours ce qui est
+ajusté : pour le PSSN, le classement des ménages reste inchangé et seul le
+montant est multiplié par un facteur commun. \\[0.35em]
+
+\textbf{Réduction publique de prix}
+& Écart entre le prix payé par le ménage et un prix de référence lorsque la
+politique publique ou le barème social réduit la facture. Cette aide peut être
+budgétaire, comme l'aide d'exploitation électrique, ou financée par une
+subvention croisée entre catégories d'usagers, comme la tranche sociale de
+l'eau. \\[0.35em]
+
+\textbf{Bénéfice en nature, brut et net}
+& Coût public moyen d'un service d'éducation ou de santé attribué à son
+utilisateur. Le bénéfice brut est le coût attribué; le bénéfice net retranche
+les frais directement payés par le ménage. Aucun des deux n'est de l'argent
+versé au ménage. \\[0.35em]
+
+\textbf{Valeur de Shapley}
+& Part de la variation d'un indicateur attribuée à un instrument après avoir
+moyenné sa contribution dans tous les ordres possibles d'introduction. Les
+parts s'additionnent exactement à la variation totale. \\[0.35em]
+
+\textbf{Appauvrissement fiscal}
+& Perte de ressources monétaires sous le seuil de pauvreté provoquée par les
+prélèvements nets des paiements publics. Un ménage déjà pauvre peut être
+appauvri sans devenir un « nouveau pauvre »; les deux indicateurs sont donc
+publiés séparément. \\[0.35em]
+
+\textbf{Décile, masse et pondération}
+& Les déciles partagent la population, classée du niveau de vie le plus faible
+au plus élevé, en dix groupes de même taille pondérée. La « masse » d'un impôt
+ou transfert est sa somme nationale estimée après application des poids
+d'enquête; un ménage pondéré représente le nombre de ménages de la population
+auquel répond l'observation enquêtée. \\[0.35em]
+
+\textbf{Scénario central et robustesse}
+& Le scénario central est l'ensemble d'hypothèses privilégié pour présenter les
+résultats. Une robustesse recalcule le même indicateur sous une hypothèse
+alternative plausible. S2 et S3 sont ainsi deux hypothèses paramétriques sur la taxation effective,
+et PDI/PGT deux conventions de pension. \\[0.35em]
+
+\textbf{Gini et concentration}
+& Le coefficient de Gini mesure l'inégalité d'un revenu entre zéro, égalité
+parfaite, et un, concentration maximale. Un indice de concentration applique
+une logique comparable à un impôt ou un transfert, mais conserve le classement
+des ménages selon leur revenu de référence. \\[0.35em]
+
+\textbf{Kakwani}
+& Indice de progressivité d'un prélèvement, égal à la concentration de sa charge
+moins le Gini du revenu de classement. Une valeur positive signifie que la
+charge est relativement plus concentrée vers le haut de la distribution; elle
+ne dit pas, à elle seule, si la pauvreté augmente ou diminue. \\[0.35em]
+
+\textbf{Reynolds--Smolensky}
+& Variation du Gini entre le revenu après et le revenu avant intervention. Le
+papier utilise $RS=G_{\text{après}}-G_{\text{avant}}$ : une valeur négative
+indique donc une réduction de l'inégalité et une valeur positive une
+augmentation. \\[0.35em]
+
+\textbf{FGT et intervalle de confiance}
+& Les indices de Foster--Greer--Thorbecke mesurent le taux de pauvreté
+($P_0$), sa profondeur ($P_1$) et sa sévérité ($P_2$). Un intervalle de
+confiance à 95~\% quantifie l'incertitude d'échantillonnage; il est obtenu ici
+par bootstrap Rao--Wu, qui respecte strates, grappes et poids de l'enquête. \\
+\end{longtable}
+
+\subsection{La séquence de revenus CEQ et le point d'entrée ivoirien}
+
+Le papier distingue les concepts de revenu selon la séquence CEQ. Dans les
+équations qui suivent, $D$ désigne les impôts directs payés par le ménage, $C$
+ses cotisations sociales, $R$ les paiements monétaires qu'il reçoit des
+administrations publiques, $I$ les taxes supportées lors de la consommation et
+$S$ les aides publiques qui réduisent le prix payé. Enfin, $H$, $E$ et $O$
+mesurent la valeur des services publics reçus en santé, en éducation et dans les
+autres domaines. La cascade s'écrit
+\begin{align}
+Y_N &= Y_P-D-C, &
+Y_G &= Y_P+R, \label{eq:ceq-branches}\\
+Y_D &= Y_N+R, &
+Y_C &= Y_D-I+S, \label{eq:ceq-cash}\\
+Y_F &= Y_C+H+E+O. \label{eq:ceq-final}
+\end{align}
+$Y_N$ et $Y_G$ sont deux branches parallèles : le premier déduit les
+prélèvements directs avant transferts, le second ajoute les transferts avant
+prélèvements. Le revenu imposable administratif n'est pas un concept de
+bien-être CEQ et n'est donc pas intercalé entre $Y_G$ et $Y_D$.
+
+L'EHCVM fournit directement l'ancre $Y_D$ par son agrégat annuel de
+consommation par tête. Nous reconstruisons les concepts pré-fiscaux à rebours.
+Dans le scénario PDI central, la pension contributive est considérée comme la
+restitution d'un revenu acquis au cours de la vie active, et non comme une aide
+de l'État. La cotisation retraite est alors une épargne obligatoire, et le
+revenu de marché coïncide avec le revenu pré-fiscal ($Y_M=Y_P$). Les sommes du
+PSSN, les bourses publiques, les prestations familiales et les indemnisations
+d'accidents du travail sont, elles, comptées comme des paiements publics reçus
+par les ménages. Dans le scénario de robustesse PGT, la pension est au contraire
+comptée comme un paiement public et la cotisation retraite comme un prélèvement.
+Ces deux conventions aboutissent exactement au même revenu disponible pour
+chaque ménage; seule sa décomposition entre ressources initiales, prélèvements
+et paiements publics change.
+
+Le calcul complet retranche du revenu disponible la TVA payée sur les achats
+finaux, la TVA non récupérable répercutée dans les prix, les accises et les
+droits de douane, puis ajoute les réductions de prix de l'eau et de
+l'électricité. Il ajoute enfin les services publics d'éducation et de santé.
+Toutes les grandeurs $Y_{\cdot h}$ sont annuelles, réelles et exprimées par
+personne. Les instruments sont d'abord agrégés au ménage :
+\begin{align}
+I_h &= \mathrm{TVA}^{\mathrm{directe}}_h+
+\mathrm{TVA}^{\mathrm{non\ deduct.}}_h+\mathrm{Accises}_h+\mathrm{Douane}_h,\\
+i_h&=I_h/n_h,\qquad s_h=S_h/n_h,\qquad e_h=E_h^{\mathrm{net}}/n_h,
+\qquad q_h=H_h^{\mathrm{net}}/n_h,\\
+Y_{Ch} &= Y_{Dh}-i_h+s_h,\\
+Y_{Fh} &= Y_{Ch}+e_h+q_h.
+\label{eq:yc-complet}
+\end{align}
+Ici, $n_h$ est la taille du ménage; $S_h$, $E_h^{\mathrm{net}}$ et
+$H_h^{\mathrm{net}}$ sont respectivement les réductions de prix, le service
+d'éducation et le service de santé, tous déflatés spatialement avant la division
+par $n_h$. Le scénario central retranche des services les paiements directs
+observables. Les équations ne mélangent donc jamais un montant total du ménage
+et un revenu par personne.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=5mm,
+  box/.style={draw, rounded corners=2pt, align=center, text width=8.2cm,
+              minimum height=8mm, fill=green!8},
+  arr/.style={-{Latex[length=2mm]}, thick}
+]
+\node[box] (yp) {$Y_P$ : revenu primaire reconstruit\\
+\footnotesize conventions PDI et PGT publiées en parallèle};
+\node[box, below=of yp] (yn) {$Y_N=Y_P-D-C$ : revenu net de marché\\
+\footnotesize impôts directs et cotisations selon la convention de pension};
+\node[box, below=of yn] (yd) {$Y_D=Y_N+R$ : revenu disponible\\
+\footnotesize ancre observée; paiements publics monétaires intégrés};
+\node[box, below=of yd] (yc) {$Y_C=Y_D-I+S$ : revenu consommable\\
+\footnotesize TVA, accises, douane, eau et électricité intégrées};
+\node[box, below=of yc] (yf) {$Y_F=Y_C+H+E+O$ : revenu final\\
+\footnotesize éducation et santé nettes des paiements directs; $O=0$};
+\draw[arr] (yp) -- node[right]{\footnotesize $-D-C$} (yn);
+\draw[arr] (yn) -- node[right]{\footnotesize $+R$} (yd);
+\draw[arr] (yd) -- node[right]{\footnotesize $-I+S$} (yc);
+\draw[arr] (yc) -- node[right]{\footnotesize $+H+E+O$} (yf);
+\end{tikzpicture}
+\caption{Relations entre les concepts de revenu CEQ. Les égalités comptables
+sont vérifiées pour chaque ménage.}
+\label{fig:ceq-cascade}
+\end{figure}
+\subsection{TVA directe et probabilité de taxation effective}
+
+La dépense $d_{kh}$ observée pour le produit $k$ est un montant toutes taxes
+comprises. Lorsque seule la TVA facturée sur la vente finale est calculée, la
+part de taxe vaut $\tau_k/(1+\tau_k)$, et non le taux appliqué directement au
+montant TTC :
+\begin{equation}
+T_h^{d,\,\text{isolée}}=\sum_k d_{kh}\,\alpha_{kh}
+\frac{\tau_k}{1+\tau_k}.
+\label{eq:vat-direct}
+\end{equation}
+Cette formule sert aux diagnostics dans lesquels la TVA incorporée est absente.
+Les résultats centraux combinent les composantes directe et incorporée; ils
+utilisent alors le dénominateur commun de l'équation~\eqref{eq:io-incidence}.
+
+Le coefficient $\alpha_{kh}\in[0,1]$ résume la collecte et la transmission de la
+TVA lors de la vente finale. Le scénario strict pose $\alpha_{kh}=1$. S2 fait
+varier ce coefficient par fonction COICOP et milieu de résidence. Dans S3, le
+ménage est remplacé par son décile $d$ et chaque fonction $k$ suit la règle
+\begin{equation}
+\alpha_{kd}=\min\{a_k+(d-1)s_k,1\},\qquad d=1,\ldots,10,
+\label{eq:alpha-s3}
+\end{equation}
+où $a_k$ est le niveau du premier décile et $s_k$ la pente par décile. Les
+valeurs exactes de $a_k$, $s_k$ et de la matrice $\alpha_{kd}$ figurent dans
+l'annexe~\ref{annexe:s3-parameters}. Elles sont imposées avant l'estimation :
+elles ne sont ni estimées sur l'EHCVM, ni calées sur une recette administrative
+ivoirienne. S3 transpose seulement le profil qualitatif documenté par
+\citet{bachas2024}, selon lequel la part des achats formels augmente avec le
+niveau de vie. Les scénarios strict et S2 mesurent la sensibilité des résultats
+à cette hypothèse structurante.
+
+\subsection{Du TRE aux coefficients techniques}
+
+Le TRE 2023 aux prix courants est la source de référence. Sa matrice d'emplois
+$U^a$ est publiée aux prix d'acquisition. Nous retirons, produit par produit, les
+marges de commerce, les marges de transport et les impôts nets sur les produits.
+Les marges retirées ne disparaissent pas : elles sont réaffectées aux lignes de
+services de commerce et de transport des branches utilisatrices.
+En notant $m_i^g$, $m_i^t$ et $q_i$ les parts de ces trois éléments dans la
+ressource au prix d'acquisition du produit $i$, la composante propre du produit
+est
+\begin{equation}
+U^{b}_{ij}=U^{a}_{ij}(1-m_i^g-m_i^t-q_i),
+\label{eq:basic-prices}
+\end{equation}
+avant réallocation des deux marges. Cette passerelle réduit les emplois
+intermédiaires de 35~241 à 33~869 milliards de FCFA et évite de traiter une taxe
+ou une marge comme un intrant physique supplémentaire.
+
+Chaque ligne est ensuite séparée entre origine domestique et importée au prorata
+de la ressource correspondante. Si $s_i=x_i^d/(x_i^d+m_i)$ est la part de
+l'offre domestique, alors $U^d_{ij}=s_iU^b_{ij}$ et
+$U^m_{ij}=(1-s_i)U^b_{ij}$. Sous l'hypothèse de technologie de branche, les
+matrices de coefficients produits-produits sont
+\begin{equation}
+B^d=U^d\widehat{x}^{-1},\qquad
+B^m=U^m\widehat{x}^{-1},\qquad
+T=V'\widehat{g}^{-1},\qquad
+A^d=B^dT,\quad A^m=B^mT,
+\label{eq:sut-product}
+\end{equation}
+où $V$ est la matrice de production, $x$ la production des branches, $g$ la
+production des produits et $T$ la matrice qui convertit les coefficients par
+branche en coefficients par produit. Le rayon spectral de $A^d$ vaut 0,346 pour le TRE
+courant, 0,347 pour le TRE constant et 0,318 pour ICIO; ils sont tous inférieurs
+à un. Les inverses de Leontief existent et les résidus numériques des équations
+sont de l'ordre de $10^{-17}$.
+
+\subsection{Concordance sectorielle et vecteurs fiscaux}
+
+La concordance est construite en deux passages déterministes. Premièrement,
+chaque poste de consommation est affecté, selon la nature du bien ou du service,
+à une seule catégorie d'une nomenclature intermédiaire de 52 secteurs.
+Deuxièmement, chacune de ces catégories est reliée à un seul des 48 produits du
+TRE. Un poste ne peut donc être ni fractionné entre plusieurs branches ni
+dupliqué. Cette règle conserve la destination sectorielle détaillée de chaque
+dépense et évite de répartir un produit entre plusieurs secteurs par une moyenne
+non pondérée. La concordance complète figure dans l'annexe~\ref{annexe:mapping-io}. La couverture
+pondérée de la consommation est de 92,5~\% pour le TRE; l'ICIO, dont la
+concordance est distincte, couvre 95,2~\%.
+
+Pour chaque produit TRE $i$, $\bar\tau_i$ est le taux statutaire moyen appliqué
+aux intrants et $e_i$ approche la fraction de production qui ouvre un droit à
+déduction. Les deux sont construits à partir de la dépense nationale de
+l'EHCVM :
+\begin{equation}
+\bar\tau_i=
+\frac{\sum_{h,k\in i}w_h d_{kh}\tau_k}
+     {\sum_{h,k\in i}w_h d_{kh}},\qquad
+e_i=
+\frac{\sum_{h,k\in i}w_h d_{kh}\mathbf 1(\tau_k>0)}
+     {\sum_{h,k\in i}w_h d_{kh}}.
+\label{eq:sector-rates}
+\end{equation}
+Cette pondération conserve la composition effective de la consommation
+nationale, mais $e_i$ reste un proxy de droit à déduction construit depuis la
+demande finale des ménages. Il ne mesure ni le taux légal sur les intrants, déjà
+porté par $\bar\tau_i$, ni la collecte lors de la vente finale, portée par
+$\alpha_{kh}$. Pour une branche sans produit observé, le taux par défaut est
+18~\%, sauf services structurellement exonérés (finance, immobilier,
+administration, éducation, santé et services domestiques), auxquels sont
+attribués un taux et une part taxable nuls.
+
+Une sensibilité juridique remplace ce proxy par un indicateur binaire
+$e_i^{L}$. Il vaut zéro pour les produits structurellement exonérés
+\texttt{K38}, \texttt{L39}, \texttt{O42}, \texttt{P43}, \texttt{Q44},
+\texttt{T47} et \texttt{U48}, et un pour les autres produits. Ce classement
+simplifié ne prétend pas reproduire toutes les exceptions du CGI; il mesure ce
+que devient la TVA incorporée lorsque le droit à déduction dépend d'une
+classification juridique plutôt que de la composition des achats de l'enquête.
+
+\subsection{TVA non déductible et propagation dans les chaînes de production}
+
+La TVA sur intrants n'est un coût que pour la fraction de production qui ne
+dispose pas du droit à déduction. La charge de premier tour du produit $i$ est
+donc
+\begin{equation}
+b=(\mathbf 1-e)\odot(A^{d\prime}+A^{m\prime})\bar\tau,
+\label{eq:first-round}
+\end{equation}
+où $\odot$ désigne le produit terme à terme. Une fois incorporée au coût d'un
+produit domestique, cette charge est transmise à toutes les productions qui
+l'utilisent en aval. Le vecteur complet de TVA enchâssée est la solution de
+\begin{equation}
+c=b+A^{d\prime}c
+  =(I-A^{d\prime})^{-1}b.
+\label{eq:leontief-vat}
+\end{equation}
+Les intrants importés contribuent au premier tour, mais seule la production
+domestique est itérée dans la chaîne ivoirienne. Cette distinction correspond
+au mécanisme économique : un produit final dans une branche devient la
+consommation intermédiaire d'une autre, qui transmet à son tour le coût déjà
+incorporé.
+
+Pour ne pas compter deux fois la même dépense TTC, les composantes directe et
+enchâssée utilisent un dénominateur commun. Pour une dépense $d$, un taux direct
+$\tau$, un taux enchâssé $c$ et une part formelle $\alpha$, nous calculons
+\begin{align}
+T^d(d)&=\alpha d\frac{\tau}{1+\tau+c},\\
+T^e(d)&=\alpha d\frac{c}{1+\tau+c}
+       +(1-\alpha)d\frac{c}{1+c}.
+\label{eq:io-incidence}
+\end{align}
+Le vecteur $c$ est défini ici comme une part additive du prix final hors marges,
+au même niveau que la TVA finale : le prix observé est décomposé entre base,
+$\tau$ et $c$. Il ne s'agit pas d'un multiplicateur de coût placé avant la TVA.
+Cette convention explique l'absence de terme croisé $\tau c$ dans le
+dénominateur $1+\tau+c$. Une convention multiplicative ferait apparaître ce
+terme et constituerait un autre modèle de prix. Une transaction finale
+informelle ne supporte pas la TVA directe, mais son prix peut contenir une taxe
+incorporée plus en amont. La figure~\ref{fig:vat-chain} résume cette mécanique.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=12mm and 18mm,
+  box/.style={draw, rounded corners=2pt, align=center, text width=3.05cm,
+              minimum height=15mm, fill=gray!4, inner sep=3pt},
+  arr/.style={-{Latex[length=2mm]}, thick}
+]
+\node[box] (input) {Intrant acheté\\TVA facturée au taux $\bar\tau$};
+\node[box, right=of input] (producer) {Producteur sans droit à déduction\\TVA d'amont non récupérée};
+\node[box, right=of producer] (embedded) {Produit issu de la branche\\charge de premier tour $b$};
+\node[box, below=of embedded] (downstream) {Branche située en aval\\le produit devient un intrant};
+\node[box, left=of downstream] (final) {Bien ou service final\\charge incorporée totale $c$};
+\draw[arr] (input) -- (producer);
+\draw[arr] (producer) -- (embedded);
+\draw[arr] (embedded) -- (downstream);
+\draw[arr] (downstream) -- (final);
+\draw[arr, dashed] (downstream.east) .. controls +(1.1,0) and +(1.1,0) ..
+  (embedded.east);
+\end{tikzpicture}
+\caption{Propagation de la TVA non déductible dans une chaîne de production.
+Le produit d'une branche peut devenir l'intrant d'une autre; l'inverse de
+Leontief additionne tous les tours domestiques.}
+\label{fig:vat-chain}
+\end{figure}
+
+\subsection{Accises et droits de douane}
+
+Les accises et droits de douane sont retirés de la dépense TTC en respectant
+l'ordre légal de la cascade. Chaque poste de consommation est relié à un produit
+du TRE, à une bande du TEC et, s'il est accisable, à un taux 2021. La part
+importée du produit $k$ est
+$m_k=M_k/(M_k+Q_k)$, à partir des importations et de la production domestique du
+TRE; la part de marges commerciales et de transport est notée $\mu_k$. Pour une
+dépense $d_{kh}$, la base hors marges est $B_{kh}=d_{kh}(1-\mu_k)$. Si
+$\epsilon_k$ est le taux d'accise, $\delta_k$ la bande TEC et $r_k$ le taux de
+TVA, les deux charges directement contenues dans l'achat sont
+\begin{align}
+A_{kh}&=B_{kh}\frac{\epsilon_k}{(1+\epsilon_k)(1+r_k)},\\
+T^{\mathrm{douane}}_{kh}&=B_{kh}\frac{\delta_km_k}
+ {(1+\delta_km_k)(1+\epsilon_k)(1+r_k)}.
+\label{eq:other-indirect}
+\end{align}
+Le facteur $(1+r_k)$ suppose que la couche de TVA payée en amont reste contenue
+dans le prix hors marges, même lorsque la vente finale n'est pas soumise à la
+TVA directe. Le coefficient $\alpha_{kh}$ ne modifie donc pas cette couche : il
+porte seulement sur la collecte à la vente finale. Si l'informalité supprimait
+aussi la TVA d'amont du prix observé, ces formules sous-estimeraient les accises
+et droits de douane extraits des achats concernés. Cette décomposition évite de
+retirer séparément chaque taxe de son propre montant TTC : le calcul chiffre à
+28,6 milliards de FCFA le chevauchement de TVA qui résulterait de cette
+opération naïve.
+
+Le scénario central pose une transmission unitaire. Les droits de porte sont
+acquittés à l'importation et les accises à la production ou à la sortie de
+régime suspensif; l'informalité du détaillant ne les annule donc pas. Pour le
+tabac et l'alcool seulement, les scénarios S2 et S3 appliquent les coefficients
+d'achat formel comme sensibilités de contrebande. Les carburants restent à
+transmission unitaire. Les paramètres et références budgétaires sont documentés
+avec leur source et sont rapprochés des encaissements de la loi de règlement
+2021 \citep{civreglement2021}. Le calcul alloue les taxes directement
+contenues dans les achats des ménages; leur propagation amont par Leontief reste
+une extension.
+
+\subsection{Impôts directs, assujettissement fiscal et CMU}
+
+Nous définissons un scénario central d'assujettissement multi-critères. Son
+objectif n'est pas de classer tout l'emploi en formel ou informel, mais
+d'identifier les rémunérations salariales pour lesquelles l'enquête observe au
+moins un indice de relation d'emploi traçable et donc de retenue fiscale
+plausible. L'emploi principal est retenu lorsqu'une rémunération positive et au
+moins un mois de travail sont déclarés, conjointement avec au moins un des
+éléments suivants : droit à des congés payés, nombre positif de jours de congé
+annuel pris, congé maladie, cotisation à la CGRAE ou à la CNPS, congé de
+maternité ou de paternité, ou bulletin de salaire.
+
+Pour l'emploi secondaire, le questionnaire ne recueille pas le même ensemble
+d'avantages contractuels. Nous retenons donc les rémunérations positives des
+emplois appartenant aux grands groupes de direction, professions
+intellectuelles et scientifiques, professions intermédiaires, employés de
+bureau et forces armées, ainsi qu'aux catégories professionnelles détaillées
+associées à un emploi salarié. Le salaire assujetti est la somme annualisée des rémunérations principale et
+secondaire retenues. Cette assiette salariale est construite une seule fois et
+reste identique dans toutes les comparaisons. Les scénarios diffèrent seulement
+par le critère d'assujettissement : le scénario strict exige simultanément un
+bulletin de salaire et une cotisation sociale; le scénario élargi exige l'un ou
+l'autre. Ils sont donc des sous-ensembles emboîtés dans le scénario central, et
+une différence de masse fiscale ne peut plus provenir d'une autre définition du
+salaire.
+
+Les non-réponses au bulletin et à la cotisation sont conservées avant tout
+recodage. Elles ne sont jamais considérées comme une preuve d'emploi formel. La
+règle centrale peut néanmoins retenir un salarié lorsqu'un autre indice positif
+est observé, par exemple un congé payé ou une cotisation déclarée. Dans les
+critères strict et élargi, un marqueur manquant ne satisfait pas le critère. Le
+diagnostic de non-réponse publie les effectifs concernés mais conserve
+exactement le classement central; il ne crée aucun assujetti supplémentaire.
+
+Cette définition est une règle d'imputation fiscale propre à l'étude, pas une
+mesure générale de l'emploi formel au sens de l'OIT. À titre diagnostique
+seulement, nous utilisons le critère observable le plus proche de la
+21\textsuperscript{e} Conférence internationale des statisticiens du travail
+(CIST) :
+un emploi salarié principal accompagné d'une cotisation déclarée à la CGRAE ou
+à la CNPS. Une variante ajoute le bénéfice conjoint de congés payés et maladie
+\citep{ilo2023}. Ce diagnostic est exporté séparément et ne modifie pas le
+scénario fiscal central.
+
+Les barèmes CGI sont appliqués mensuellement. Si $W$ est le salaire brut
+imposable, l'IS vaut $0,012W$; la CN est la somme des prélèvements marginaux par
+tranche sur $0,8W$. La base soumise à l'IGR est notée
+$B_{\mathrm{IGR}}=0,8(W-IS-CN)$ et le quotient familial vaut
+$Q=B_{\mathrm{IGR}}/N$. L'impôt par part du barème à dix tranches est multiplié par $N$, puis
+réduit de 15~\%. Le nombre de parts dépend de l'état civil, augmente de 0,5 par
+enfant de moins de 18 ans, est plafonné à cinq, et les enfants sont affectés au
+salaire assujetti le mieux rémunéré du ménage. Les égalités de salaire sont
+départagées par l'ordre stable de l'identifiant individuel. Une sensibilité
+partage également les demi-parts d'enfants entre les assujettis du ménage. La
+CNPS salariale vaut 6,3~\% du
+salaire dans la limite mensuelle de 1~647~315 FCFA.
+
+Pour la CMU, le vivier observable comprend les personnes qui déclarent une
+assurance maladie financée par un organisme public. Un tirage reproductible
+(graine 74375322) ordonne séparément les pauvres
+et les non-pauvres; les cibles sont 75~000 participants pauvres non contributifs
+et 1~425~000 participants non pauvres contributifs. La contribution vaut 1~000
+FCFA par mois pour les adultes du second groupe. Dans la livraison EHCVM
+utilisée, le vivier observable ne permet d'atteindre que 50~641 participants
+pauvres et 885~822 non-pauvres, dont 537~231 adultes contributeurs; tous les
+admissibles sont alors retenus et l'écart aux cibles est publié. Une variante
+statutaire applique 1~000 FCFA mensuels à tous les adultes afin de borner la
+masse potentielle.
+
+\subsection{Pensions, transferts directs et filets sociaux}
+
+Le module recense ou impute les sommes monétaires que les ménages reçoivent des
+administrations publiques. Combinées aux impôts directs et aux cotisations,
+elles permettent de remonter du revenu disponible observé vers les ressources
+dont le ménage disposait avant l'intervention publique. Le module distingue
+quatre catégories principales de paiements publics. Premièrement, le PSSN est
+reconstitué par un test indirect de niveau de vie, ou
+PMT. Le registre administratif n'étant pas apparié à l'enquête, cette procédure
+ne cherche pas à reconnaître les bénéficiaires réels un par un; elle reproduit
+une règle de ciblage transparente avec les informations disponibles dans
+l'EHCVM. Cette logique générale --- prédire le niveau de vie à partir de
+caractéristiques observables --- suit la formulation classique des tests
+indirects de niveau de vie \citep{groshbaker1995}. Le projet ivoirien prévoit
+lui-même un dispositif de ciblage et un registre social
+\citep{worldbankpssn2015}; la formule reconstruite ici ne doit toutefois pas être
+confondue avec sa formule administrative non observée. Une régression linéaire
+pondérée par le poids du ménage explique le
+logarithme du revenu disponible par personne. Les variables explicatives sont
+le logarithme de la taille du ménage; le milieu urbain ou rural; la région;
+l'âge du chef et son carré; le sexe, le niveau d'éducation et le statut
+matrimonial du chef; puis les nombres de membres âgés de 0 à 5 ans, de 6 à
+10 ans, de 11 à 15 ans et de 65 ans ou plus, ainsi que le nombre de personnes
+ayant un handicap déclaré. Le milieu, la région et la taille proviennent du
+fichier ménage; les caractéristiques du chef et la composition démographique,
+du fichier individus. Lorsque l'âge du chef manque, il est remplacé par l'âge
+médian observé; une caractéristique catégorielle manquante prend la modalité de
+référence et un effectif démographique manquant vaut zéro.
+
+Le niveau de vie prédit est obtenu en exponentiant la prédiction du modèle. Les
+ménages sont ensuite classés de la prédiction la plus faible à la plus élevée;
+l'identifiant ménage départage les égalités, ce qui rend la sélection
+reproductible. Le cumul des poids ménage fixe deux coupures : une première au
+plus près de 177~000 ménages pour la cohorte présente toute l'année, puis une
+seconde au plus près de 192~000 pour inclure la cohorte partielle. Comme un
+ménage enquêté représente un nombre entier de ménages pondérés et n'est pas
+fractionné à la frontière, le calcul retient 177~142 ménages en année complète
+et 14~625 en cohorte partielle, soit 191~767 au total et un écart de 233 à la
+cible. Cette différence de couverture est publiée; aucun poids n'est modifié
+pour la faire disparaître.
+
+L'allocation statutaire vaut 36~000 FCFA par trimestre. Quatre versements sont
+attribués à la première cohorte et trois à la seconde. La masse obtenue avant
+ajustement est multipliée par 1,000739 afin de retrouver exactement
+27,108 milliards de FCFA, montant exécuté documenté pour 2021
+\citep{civperformance2021}. Le calage porte donc sur la masse monétaire, pas sur
+le rang PMT ni sur la distribution entre déciles. Dans le volet de l'enquête consacré aux programmes sociaux, 24~989 ménages
+pondérés déclarent recevoir le programme monétaire, sans en indiquer le montant;
+seuls 972 appartiennent aussi à la sélection PMT. La collecte ne permet pas de
+vérifier le programme administratif exact ni le montant reçu; ces déclarations
+ne remplacent donc pas le score dans le scénario central.
+
+Une robustesse « déclarés d'abord » retient en priorité tous ces ménages, puis
+complète la cible par ordre croissant du score PMT. Elle conserve les deux
+cohortes, ne fractionne aucun poids à la coupure et cale de nouveau la masse sur
+27,108 milliards de FCFA. Elle retient 192~544 ménages pondérés, conserve les
+24~989 déclarants et attribue 79,5~\% des bénéficiaires à des ménages sous le
+seuil, contre 85,9~\% dans le PMT central. L'annexe statistique publie les
+coefficients, les variables, les coupures, les facteurs de calage et les profils
+par décile des deux allocations.
+
+La mesure des paiements publics n'attribue aucun montant monétaire aux aides
+alimentaires ni aux
+prestations de santé, car elles sont fournies en nature. Elle n'ajoute pas non
+plus les travaux à haute intensité de main-d'œuvre (HIMO) aux paiements publics :
+ils rémunèrent une activité et peuvent déjà apparaître dans les revenus du
+travail déclarés. Les participations observées à ces programmes restent
+documentées pour les modules qui peuvent les valoriser.
+
+Deuxièmement, les bourses correspondent aux montants directement déclarés par
+les élèves du secondaire général public et du supérieur public.
+Troisièmement, les prestations familiales appliquent les barèmes CNPS aux
+enfants et naissances observés des ménages comprenant un travailleur couvert.
+Quatrièmement, la dépense annuelle d'accidents du travail est distribuée comme
+valeur attendue entre travailleurs présumés couverts. Cette couverture n'utilise
+pas la déclaration d'assurance maladie : elle est approchée par la cotisation
+retraite déclarée et la durée de l'emploi. Les pensions de retraite, de
+survivant et d'invalidité sont directement observées parmi les revenus
+déclarés. Les pensions alimentaires et les sommes reçues de parents ou d'autres ménages
+sont présentées séparément dans les diagnostics. Elles ne sont pas comptées
+comme des paiements publics, puisqu'il s'agit d'argent transféré entre agents
+privés et non de ressources versées par une administration.
+
+Dans le scénario PDI central, les pensions contributives sont déjà comprises
+dans les ressources acquises avant l'intervention publique et les cotisations
+retraite sont considérées comme une épargne obligatoire. Pour remonter du revenu
+disponible vers ces ressources initiales, le calcul réintègre donc seulement les
+prélèvements non liés à la retraite qui sont mesurés ici, notamment l'IRPP et la
+CMU, puis retire les paiements monétaires des programmes publics. Dans la
+robustesse PGT, le même calcul compte au contraire les pensions parmi les
+paiements publics reçus et les cotisations retraite parmi les prélèvements
+supportés. Les deux reconstructions retrouvent le même revenu disponible à
+moins de $10^{-6}$ FCFA. Cette double présentation suit le manuel CEQ et évite
+qu'une convention comptable sur les pensions détermine silencieusement le
+diagnostic distributif \citep{lustig2022}.
+
+\subsection{Réductions publiques de prix sur l'électricité, l'eau et les carburants}
+
+Le calcul rapproche les dépenses détaillées d'électricité, d'eau et de carburant
+des informations sur le logement et l'abonnement aux réseaux. Pour l'eau, il
+distingue l'achat facturé directement par le réseau de l'achat auprès d'un
+revendeur. Le raccordement, l'inclusion de la facture dans le loyer et le type
+de compteur servent de contrôles de cohérence, mais un ménage sans compteur
+individuel n'est pas automatiquement écarté.
+
+Pour l'électricité, le rapport de l'ANARE-CI documente une aide d'exploitation
+de 8,69 milliards de FCFA, environ 30~\% d'abonnés au tarif social, un tarif
+moyen hors taxes de 51 FCFA par kWh pour ces abonnés et de 70 FCFA pour le tarif
+domestique général \citep{anare2021}. Parmi les ménages ayant une facture
+positive, les 30~\% aux factures pondérées les plus faibles sont classés dans
+le groupe social. La facture est convertie en quantité avec le tarif
+correspondant, puis les 8,69 milliards sont répartis au prorata de cette
+quantité. Le montant national est ainsi retrouvé exactement; des variantes à
+20 et 40~\% d'abonnés sociaux testent la sensibilité de la frontière.
+
+Pour l'eau, le barème trimestriel est inversé tranche par tranche : 235 FCFA par
+mètre cube pour les 18 premiers mètres cubes, 367,3 jusqu'à 90, puis 586,8
+jusqu'à 300. La réduction de prix centrale est l'écart entre le tarif domestique
+et le tarif social appliqué aux 72 premiers mètres cubes annuels. Les achats
+auprès d'un revendeur ne reçoivent rien dans le scénario central, faute de tarif
+observé; une marge de 20~\% de la dépense forme la borne haute. Enfin, le prix à
+la pompe 2021 permet d'estimer les litres achetés, mais aucune série annuelle de
+prix de parité suffisamment auditée ne permet d'identifier un soutien au
+carburant. Son montant central est donc nul. Une borne haute de 80 FCFA par
+litre, fondée sur la structure de prix postérieure et explicitement séparée de
+2021, n'est utilisée qu'en robustesse \citep{bceao2023}. Cette prudence évite de
+transformer une hypothèse de prix en dépense publique observée. La méthode suit
+le traitement CEQ des subventions à la consommation \citep{lustig2022,younger2017}.
+
+\subsection{Services publics d'éducation}
+
+L'analyse d'incidence des dépenses d'éducation suit l'approche du coût moyen par
+utilisateur \citep{demery2003,lustig2022,akim2020}. Les informations scolaires
+de l'EHCVM permettent d'observer la fréquentation pendant l'année, le niveau
+d'études, le caractère public ou privé de l'établissement et les paiements
+effectués par les familles. Les niveaux maternel et primaire sont réunis; le
+secondaire général, le secondaire technique, le postsecondaire professionnel et
+le supérieur sont traités séparément.
+
+Les dépenses exécutées 2021 proviennent du Rapport général sur la performance :
+587,505 milliards pour le préscolaire et le primaire, 378,934 pour le secondaire
+général, 13,052 pour le secondaire technique, 91,771 pour la formation
+professionnelle et 283,609 pour l'enseignement supérieur et les œuvres
+universitaires \citep{civperformance2021}. Dans chaque niveau, le budget est
+divisé par le nombre pondéré d'élèves du public observés dans l'enquête. Chaque
+élève reçoit ce coût public moyen; la somme pondérée retrouve donc exactement le
+budget du niveau. Le bénéfice net retranche les frais d'inscription et les
+contributions scolaires directement payés. Deux robustesses utilisent les seules
+dépenses courantes, puis retranchent l'ensemble des dépenses scolaires déclarées.
+Cette valorisation mesure un service financé par l'État, pas la qualité de
+l'enseignement ni son rendement futur.
+
+\subsection{Services publics de santé}
+
+Le calcul de santé écarte les déclarations relatives à l'assurance maladie :
+leur couverture est trop incomplète pour déterminer le bénéfice central. Les
+informations retenues décrivent les maladies et les consultations des trente
+derniers jours, les dépenses de soins des trois derniers mois, ainsi que les
+hospitalisations des douze derniers mois, leur nombre, le type de prestataire et
+les frais acquittés. Les structures publiques sont identifiées à partir de la
+catégorie de prestataire déclarée.
+
+Le rappel de trente jours rend l'utilisation ambulatoire observée volatile. Le
+scénario central attribue donc à chaque personne la dépense publique moyenne
+attendue pour des personnes comparables. La probabilité pondérée d'une
+consultation publique est calculée dans des cellules croisant six classes d'âge
+(0--4, 5--14, 15--24, 25--44, 45--64 et 65 ans ou plus), le sexe et le milieu.
+Lorsqu'une cellule contient moins de 30 observations, le taux âge--sexe national
+la remplace. Ce taux est annualisé par douze. Il ne repose ni sur une adhésion à
+la CMU ni sur une déclaration d'assurance. Les hospitalisations sont, elles,
+attribuées selon les séjours publics effectivement déclarés sur douze mois; un
+séjour représente dix unités de ressources ambulatoires dans la spécification centrale, contre cinq
+et vingt en robustesse.
+
+Le budget central de 108,527 milliards additionne les actions exécutées de
+médicaments et intrants et de prise en charge médicale. Il est divisé par le
+nombre pondéré d'unités ambulatoires attendues et d'unités hospitalières, puis
+entièrement réparti. La borne budgétaire large de 141,737 milliards ajoute le
+reste du programme santé \citep{civperformance2021}. Le bénéfice net retranche
+les dépenses de soins annualisées par quatre et les frais hospitaliers payés
+aux structures publiques. L'allocation intégrale aux consultations observées,
+le budget large et les poids hospitaliers 5 et 20 sont publiés en robustesse.
+Il s'agit d'une incidence budgétaire au coût de production, non d'une mesure de
+l'état de santé, de la qualité des soins ou d'une valeur dérivée de l'assurance
+\citep{demery2003,lustig2022}.
+
+\subsection{Assemblage des revenus, contribution distributive et appauvrissement fiscal}
+
+Le revenu consommable retranche du revenu disponible la TVA directe et la TVA
+non déductible incorporée dans les prix, les accises et les droits de douane,
+puis ajoute les réductions publiques de prix. Le revenu final ajoute ensuite
+les bénéfices nets d'éducation et de santé. Les mêmes opérations sont réalisées
+sous PDI et PGT; les deux conventions diffèrent avant le revenu disponible mais
+retrouvent le même revenu disponible observé. Les identités sont contrôlées
+ménage par ménage à une tolérance de $10^{-6}$ FCFA. Les résultats centraux
+utilisent S3 pour la TVA, la transmission complète des accises et droits de
+douane, les réductions de prix centrales et les bénéfices en nature nets des
+paiements directs.
+
+Pour expliquer la variation du Gini sans dépendre d'un ordre arbitraire, les
+instruments sont réunis en six groupes : prélèvements directs, paiements publics
+directs, impôts indirects, réductions de prix, éducation et santé. La valeur de
+Shapley moyenne la contribution marginale de chaque groupe sur les 720 ordres
+possibles, calculés exactement à partir des 64 sous-ensembles
+\citep{shorrocks2013}. Cinquante réplications Rao--Wu recalculent la
+décomposition complète; les autres indicateurs utilisent 500 réplications.
+
+L'appauvrissement fiscal compare le revenu primaire monétaire au revenu
+consommable. Les services d'éducation et de santé ne sont pas convertis en
+argent pour déterminer un franchissement du seuil. Pour un seuil $z$, la perte
+sous le seuil est
+$\max\{\min(Y_P,z)-\min(Y_C,z),0\}$ et le gain est l'expression symétrique. Leur
+différence pondérée, divisée par $z$, retrouve exactement la variation de la
+profondeur de pauvreté. La part appauvrie, les nouveaux pauvres, les gains sous
+le seuil et leurs montants sont rapportés séparément, conformément à
+\citet{higgins2016}; une grille allant de 0,5 à 2 fois le seuil national teste la
+dominance du résultat.
+
+\subsection{Pauvreté, progressivité et inférence de sondage}
+
+Les indices de \citet{fgt1984} sont
+\begin{equation}
+P_a=\frac{\sum_h w_hn_h
+\left[\max\{(z_h-y_h)/z_h,0\}\right]^a}
+{\sum_h w_hn_h},\qquad a\in\{0,1,2\},
+\label{eq:fgt}
+\end{equation}
+où $y_h$ est le concept de revenu par tête, $z_h$ le seuil spécifique, $w_h$ le
+poids ménage et $n_h$ sa taille. Le Kakwani est
+$K=C_T-G_Y$, différence entre la concentration de l'impôt et le Gini du revenu
+de classement \citep{kakwani1977}. Le Reynolds--Smolensky est rapporté selon la
+convention $RS=G_{\text{après}}-G_{\text{avant}}$ : une valeur négative
+indique une réduction des inégalités. Les rangs fractionnaires pondérés suivent
+la règle du point médian.
+
+L'incertitude respecte le plan stratifié en grappes. Dans chaque strate $h$
+contenant $m_h$ unités primaires, le bootstrap Rao--Wu tire $m_h-1$ grappes avec
+remise et multiplie leurs poids par $m_h/(m_h-1)$ \citep{raowu1988}. Les
+intervalles percentiles reposent sur 500 réplications. Les mêmes poids sont
+utilisés pour comparer TRE courant, TRE constant et ICIO, de sorte que les
+intervalles sur leurs différences incorporent la covariance entre scénarios.
+
+\subsection{Taxation de la vente finale et recyclage des recettes}
+
+Pour les produits initialement à taux nul et inclus dans l'ensemble réformé
+$\mathcal K$, la dépense observée est une base hors TVA. La charge additionnelle
+nominale est donc
+\begin{equation}
+\Delta T_h=0,09\sum_{k\in\mathcal K}\alpha_{kh}d_{kh}.
+\label{eq:reform-tax}
+\end{equation}
+La réforme porte sur la TVA facturée à la vente finale. Les coefficients
+techniques et le vecteur $c$ de taxe déjà incorporée restent constants : nous
+n'attribuons donc pas mécaniquement le nouveau taux de 9~\% à la composante
+enchâssée. Une modification des droits à déduction sectoriels exigerait un
+nouveau contrefactuel I/O et constitue une réforme distincte.
+Nous simulons les ensembles agricole et large sous transmission intégrale, S2 et S3. Le revenu
+après réforme brute est
+$Y'_{Dh}=Y_{Dh}-\mathrm{def}_h\Delta T_h/n_h$. Pour le scénario à budget constant, la
+recette $\mathcal R=\sum_hw_h\Delta T_h$ est divisée par la population
+$N=\sum_hw_hn_h$. Chaque personne reçoit $b=\mathcal R/N$, si bien que
+\begin{equation}
+Y''_{Dh}=Y_{Dh}-\mathrm{def}_h\frac{\Delta T_h}{n_h}
+          +\mathrm{def}_h b,\qquad
+\sum_hw_hn_hb=\mathcal R.
+\label{eq:recycling}
+\end{equation}
+La recette et $b$ sont recalculés à chaque réplication Rao--Wu. Le résultat
+compare ainsi une réforme sans emploi des fonds et un paquet fiscal
+budgétairement neutre; il ne suppose ni coût administratif ni ciblage parfait.
+
+%=============================================================================
+\section{Résultats}
+\label{sec:resultats}
+
+\subsection{TVA directe : une charge croissante avec le niveau de vie}
+
+Le tableau~\ref{tab:vat-scenarios} rassemble les trois hypothèses de taxation
+effective. Dans le scénario central S3, la TVA directe simulée atteint 693
+milliards de FCFA. Le taux effectif moyen passe de 2,01~\% du revenu disponible
+au premier décile à 6,13~\% au dixième. Cette pente combine la composition des
+paniers et l'augmentation de la probabilité d'achat formel avec le niveau de
+vie. Le Kakwani vaut $0,165$ et son intervalle à 95~\%, $[0,157;0,173]$, exclut
+nettement zéro.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{TVA directe selon l'hypothèse de taxation effective}
+\label{tab:vat-scenarios}
+\begin{tabular}{lrrrr}
+\toprule
+Hypothèse & Masse & Kakwani & IC à 95~\% & $RS$ \\
+           & (mds FCFA) & & & \\
+\midrule
+Strict : transmission intégrale & 1~387 & 0,076 & [0,067 ; 0,084] & $-0,0069$ \\
+S2 : COICOP $\times$ milieu     &   739 & 0,132 & [0,123 ; 0,140] & $-0,0064$ \\
+S3 : COICOP $\times$ décile     &   693 & 0,165 & [0,157 ; 0,173] & $-0,0076$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : masses issues du TRE courant afin de conserver la même
+décomposition TTC que le modèle I/O. Kakwani et Reynolds--Smolensky utilisent
+$Y_D$ comme revenu de classement. Intervalles Rao--Wu, 500 réplications.
+Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+La transmission intégrale double approximativement la masse par rapport à S3,
+mais ne change pas le signe de la progressivité : même sans informalité
+modélisée, les produits taxés occupent une part plus forte des paniers du haut de
+la distribution. En revanche, le paramétrage de l'informalité accentue fortement
+la pente : sous transmission intégrale, le taux effectif va de 6,48 à 10,4~\% entre les déciles
+extrêmes; sous S3, il va de 2,01 à 6,13~\%. La figure~\ref{fig:vat-scenarios}
+montre que l'écart entre S2 et S3 est surtout concentré au bas de la
+distribution, tandis que les deux profils convergent au sommet.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig1_eff_vat_three_scenarios.png}
+\caption{Taux effectif de TVA directe par décile et scénario de taxation
+effective. S3 est le scénario central; S2 et la transmission intégrale sont des sensibilités.
+Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:vat-scenarios}
+\end{figure}
+
+\subsection{Une taxe progressive peut néanmoins accroître la pauvreté}
+
+La progressivité est une propriété relative de la charge le long de la
+distribution; elle ne garantit pas que le niveau de vie des pauvres augmente.
+Dans le scénario S3, la TVA directe fait passer $P_0$ de 37,47 à 39,81~\%, soit
+$+2,33$ points avec un intervalle $[1,88;2,85]$. L'ajout de la TVA enchâssée
+porte $P_0$ à 40,96~\%, soit $+3,48$ points $[2,96;4,03]$. Le même mécanisme
+apparaît sous S2 et sous transmission intégrale, avec une amplitude croissante
+de la charge.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Pauvreté avant TVA et après TVA directe et totale}
+\label{tab:fgt-io}
+\begin{tabular}{llrrr}
+\toprule
+Scénario & Concept & $P_0$ (\%) & $\Delta P_0$ (pt) & IC à 95~\% \\
+\midrule
+Référence & $Y_D$, avant TVA & 37,47 & 0,00 & -- \\
+S3 & TVA directe & 39,81 & 2,33 & [1,88 ; 2,85] \\
+S3 & TVA directe + enchâssée & 40,96 & 3,48 & [2,96 ; 4,03] \\
+S2 & TVA directe + enchâssée & 41,42 & 3,94 & [3,37 ; 4,57] \\
+Strict & TVA directe + enchâssée & 44,49 & 7,01 & [6,32 ; 7,73] \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : TRE 2023 courant. Les poids de population multiplient le
+poids du ménage par le nombre de ses membres. Le seuil national de pauvreté de
+l'EHCVM 2021 est de 369~516 FCFA par personne et par an.
+Intervalles Rao--Wu, 500 réplications conjointes. Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Dans la spécification centrale, 191~467 ménages, représentant 1~038~623
+personnes, se situent au-dessus du seuil dans $Y_D$ et en dessous dans le revenu
+après TVA totale; 47,8~\% de ces nouveaux pauvres vivent en milieu rural. Ces
+basculements ne signifient pas qu'un million de personnes supportent toute la
+charge : ils indiquent que la marge de revenu de ces personnes au-dessus du
+seuil était inférieure à la taxe simulée.
+
+\subsection{La TVA enchâssée et la robustesse au choix de matrice}
+
+Le TRE courant produit, sous S3, 214 milliards de FCFA de TVA enchâssée, contre
+693 milliards de TVA directe. La composante amont représente donc 23,6~\% de la
+charge totale. Elle ne se confond ni avec la ligne de TVA non déductible du TRE,
+qui atteint 1~611 milliards pour l'ensemble des emplois de l'économie, ni avec
+une nouvelle taxe facturée au consommateur : il s'agit de la part de coût
+incorporée à la consommation des ménages après propagation et concordance.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Sensibilité de la TVA totale à la matrice et au droit à déduction, scénario S3}
+\label{tab:io-robustness}
+\begin{tabular}{lrrrr}
+\toprule
+Spécification & TVA directe & TVA enchâssée & TVA totale & $\Delta P_0$ \\
+        & \multicolumn{3}{c}{(milliards de FCFA)} & (point) \\
+\midrule
+TRE 2023, prix courants  & 693 & 214 & 907 & 3,48 \\
+TRE courant, $e_i^L$ juridique & 697 & 22 & 719 & -- \\
+TRE 2023, prix constants & 693 & 220 & 913 & 3,56 \\
+OCDE ICIO 2020           & 691 & 212 & 903 & 3,56 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : le TRE courant est la référence. La ligne juridique pose
+un droit à déduction complet hors sept produits structurellement exonérés; son
+effet sur la pauvreté n'est pas recalculé. Le tableau du TRE à prix constants
+porte le millésime 2023 mais ne documente pas l'année de base de ses prix; il
+est donc utilisé comme test de robustesse et non pour interpréter une évolution
+en volume. L'écart de
+$\Delta P_0$ entre TRE courant et ICIO est $-0,072$ point, IC à 95~\%
+$[-0,197;0,031]$. La couverture pondérée de la concordance est 92,5~\% pour le TRE et
+95,2~\% pour ICIO. Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Les trois estimations fondées sur des matrices différentes sont proches. Le TRE
+constant augmente la TVA enchâssée de 5,8 milliards par rapport au TRE courant.
+ICIO donne une masse totale inférieure de 4,1 milliards, mais un effet pauvreté
+légèrement supérieur en raison de la distribution sectorielle de la charge.
+L'intervalle sur la différence TRE--ICIO contient zéro.
+
+La sensibilité au droit à déduction est beaucoup plus forte. Le classement
+juridique binaire réduit la TVA enchâssée de 214,4 à 22,3 milliards et la charge
+totale de 907,3 à 719,0 milliards; la TVA directe passe de 692,9 à 696,7
+milliards parce que le dénominateur commun contient moins de TVA incorporée. Ce
+contrôle est volontairement grossier, mais il montre que le résultat central ne
+peut pas être présenté comme robuste au choix de $e_i$. Une nomenclature
+administrative des droits à déduction par produit est nécessaire pour resserrer
+cet intervalle structurel. La figure~\ref{fig:io} présente les niveaux de
+pauvreté correspondant aux seules variantes de matrice.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig_poverty_io_impact.png}
+\caption{Pauvreté avant TVA, après TVA directe et après TVA totale. Le panneau
+central repose sur le TRE 2023 courant et S3; les autres barres encadrent les
+hypothèses de transmission et de matrice. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:io}
+\end{figure}
+
+\subsection{Accises et droits de douane : une charge additionnelle diffuse}
+\label{sec:res-other-indirect}
+
+Les achats des ménages contiennent 67,9 milliards de FCFA d'accises et 185,1
+milliards de droits de douane. La décomposition des accises donne 36,5 milliards
+sur les carburants, 13,6 sur l'alcool, 7,6 sur les cosmétiques, 7,1 sur le tabac
+et 3,2 sur les boissons non alcoolisées. Le tableau~\ref{tab:other-indirect}
+montre que les taux effectifs augmentent avec le niveau de vie, mais moins
+fortement que pour la TVA S3.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Accises et droits de douane directement contenus dans les achats}
+\label{tab:other-indirect}
+\begin{tabular}{lrrrr}
+\toprule
+Instrument & Masse & Taux D1 & Taux D10 & Kakwani \\
+           & (mds FCFA) & \multicolumn{2}{c}{(\% de $Y_D$)} & \\
+\midrule
+Accises              &  67,9 & 0,292 & 0,548 & 0,102 \\
+Droits de douane     & 185,1 & 0,946 & 1,348 & 0,059 \\
+Ensemble             & 253,0 & 1,238 & 1,896 & 0,070 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : IC à 95~\% Rao--Wu : $[0,071;0,130]$ pour les accises,
+$[0,034;0,088]$ pour les droits de douane et $[0,049;0,096]$ pour l'ensemble.
+D1 et D10 désignent les premier et dixième déciles. Les taux sont rapportés au
+revenu disponible réel. Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Les montants imputés aux ménages représentent 23,2~\% des encaissements administratifs
+comparables d'accises et 33,3~\% des droits de douane. Cet écart est attendu :
+les références, 292,9 et 555,1 milliards, couvrent aussi les achats des
+entreprises et administrations, tandis que la simulation ne porte que sur la
+consommation directement identifiable des ménages. La concordance TEC couvre
+100~\% de la dépense pondérée, avec des zéros explicites pour les services; la
+concordance TRE qui fournit marges et parts importées en couvre 92,3~\%.
+
+Ajoutées isolément à la TVA directe et enchâssée, les deux taxes porteraient la
+pauvreté de 37,47 à 44,72~\%, soit $+7,25$ points. Cette transition partielle
+n'inclut ni les paiements publics directs ni les réductions de prix. La séquence
+monétaire complète donne 42,01~\% au revenu consommable. La propagation amont
+des accises et droits de douane reste absente dans les deux calculs. La
+figure~\ref{fig:other-indirect} présente les profils de
+charge par décile.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig17_indirect_other_decile.png}
+\caption{Taux effectifs des accises et droits de douane par décile. Les barres
+reposent sur les charges directement contenues dans les achats des ménages.
+Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:other-indirect}
+\end{figure}
+
+\subsection{Prélèvements directs : forte progressivité, assiette limitée}
+\label{sec:res-direct}
+
+Le scénario central multi-critères identifie 1,087 million d'assujettis pondérés,
+soit 42,7~\% des salariés rémunérés observés. Au moins un assujetti est présent
+dans 14,6~\% des ménages. Le taux de couverture augmente de 3,46~\% des ménages
+du premier décile à 29,1~\% dans le dernier. Cette concentration explique
+l'essentiel du profil de l'impôt et rejoint le mécanisme de capacité fiscale
+mis en évidence par \citet{jensen2022} : l'extension du salariat couvert par un
+tiers déclarant élargit progressivement l'assiette de l'impôt sur le revenu.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Impôts directs et cotisations, scénario central multi-critères}
+\label{tab:direct}
+\begin{tabular}{lrrrr}
+\toprule
+Décile & Ménages assujettis & Taux IRPP & Taux cotisations & Part IRPP \\
+       & (\%) & (\% de $Y_D$) & (\% de $Y_D$) & (\% de la masse) \\
+\midrule
+1  & 3,46 & 0,036 & 0,134 & 0,09 \\
+5  & 7,05 & 0,290 & 0,356 & 1,58 \\
+10 & 29,1 & 3,10  & 1,84  & 66,6 \\
+\midrule
+\multicolumn{2}{l}{IRPP} & \multicolumn{3}{r}{225,5 milliards FCFA} \\
+\multicolumn{2}{l}{CNPS} & \multicolumn{3}{r}{155,9 milliards FCFA} \\
+\multicolumn{2}{l}{CMU contributive observée} & \multicolumn{3}{r}{6,45 milliards FCFA} \\
+\multicolumn{2}{l}{Kakwani IRPP / cotisations} & \multicolumn{3}{r}{0,452 / 0,344} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : l'IC à 95~\% du Kakwani est $[0,410;0,488]$ pour l'IRPP
+et $[0,302;0,380]$ pour les cotisations. Les variantes d'assujettissement sont
+détaillées dans le tableau~\ref{tab:direct-scenarios}. Source : calculs des
+auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Assiette et prélèvements selon le critère d'assujettissement}
+\label{tab:direct-scenarios}
+\begin{tabular}{lrrrr}
+\toprule
+Scénario & Assujettis & Masse salariale & IRPP & Cotisations \\
+ & (pondérés) & \multicolumn{3}{c}{(milliards de FCFA)} \\
+\midrule
+Central multi-critères & 1~087~154 & 2~482,8 & 225,5 & 162,4 \\
+Strict : bulletin ET cotisation & 616~327 & 1~889,7 & 192,0 & 125,0 \\
+Élargi : bulletin OU cotisation & 902~080 & 2~285,3 & 215,6 & 149,9 \\
+Diagnostic de non-réponse & 1~087~154 & 2~482,8 & 225,5 & 162,4 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : les quatre lignes utilisent la même rémunération
+annualisée. Une non-réponse ne vaut jamais réponse positive. Le diagnostic
+conserve le classement central et publie les valeurs manquantes séparément.
+Les cotisations additionnent la CNPS salariale et la CMU simulée. Source :
+calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Le décile supérieur acquitte 66,6~\% de l'IRPP et 51,5~\% des cotisations. Le
+Kakwani de l'IRPP, $0,452$, est près de trois fois celui de la TVA centrale.
+Conditionnellement aux salaires assujettis, l'IRPP représente 1,68~\% de la
+masse salariale au premier décile, 5,43~\% au cinquième et 11,6~\% au dixième;
+les cotisations correspondantes restent proches de 6,3--6,6~\%, en raison du
+taux CNPS presque proportionnel et de la petite composante CMU. La figure
+\ref{fig:direct} juxtapose cette incidence salariale à la charge rapportée au
+revenu disponible de tous les ménages.
+Cette comparaison ne doit pas être confondue avec l'effet agrégé. Dans le
+scénario PDI central, le Gini passe de 0,3414 pour $Y_P$ à 0,3345 pour $Y_N$, soit une variation de
+$-0,0069$. La cotisation retraite est alors de l'épargne et non un prélèvement
+CEQ, même si sa charge statutaire reste décrite dans le tableau
+\ref{tab:direct}. Dans le scénario PGT, le Gini passe de 0,3440 à 0,3336; 0,124~\%
+de la population appartient toutefois à un ménage dont $Y_P$ reconstruit est
+négatif. Le prélèvement est intensément progressif parmi les personnes exposées,
+mais son champ ne couvre qu'une minorité des ménages.
+
+La décomposition de la CMU éclaire aussi l'écart entre droit et observation. Le
+tirage contraint par les réponses du module santé retient 50~641 participants
+pauvres non contributifs et 885~822 non-pauvres, en dessous des cibles de
+75~000 et 1~425~000 faute d'un vivier observable suffisant. Parmi les
+non-pauvres, 537~231 adultes contribuent. La variante statutaire appliquée à
+tous les adultes produirait 187,8 milliards de FCFA, contre 6,45 milliards dans
+la simulation de participation observée; cet écart est une sensibilité de
+couverture, non une recette attendue.
+
+Le tableau~\ref{tab:direct-scenarios} dissipe l'inversion qui apparaissait dans
+une version antérieure du calcul. Tous les scénarios utilisent désormais la
+même assiette salariale. Le critère strict retient 616~327 personnes pondérées
+et produit 192,0 milliards d'IRPP; le critère élargi en retient 902~080 et
+produit 215,6 milliards, contre 1~087~154 personnes et 225,5 milliards dans le
+scénario central. Les non-réponses ne sont jamais recodées comme un indice de
+formalité. Leur diagnostic conserve donc la masse centrale et publie séparément
+les effectifs dont les marqueurs sont manquants.
+
+L'emploi secondaire ne représente que 1,60~\% de la masse salariale centrale.
+Partager également les demi-parts d'enfants entre les assujettis, plutôt que les
+attribuer au mieux rémunéré, augmente l'IRPP de 0,04~\% seulement.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig16_direct_burden_decile.png}
+\caption{Charge des impôts directs et cotisations par décile dans le scénario
+central multi-critères. Le panneau de gauche rapporte les prélèvements au
+revenu disponible de tous les ménages; celui de droite les rapporte à la masse
+salariale des seuls assujettis. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:direct}
+\end{figure}
+
+\subsection{Transferts directs, filets sociaux et pensions}
+\label{sec:res-transfers}
+
+Les quatre transferts publics centraux totalisent 125,8 milliards de FCFA et
+atteignent environ 1,00 million de ménages distincts pondérés. Le tableau
+\ref{tab:transfers} sépare montants directement observés, imputations statutaires
+et calages. Les 252,6 milliards de pensions sont présentés à part parce qu'ils
+constituent du revenu différé en PDI et un transfert en PGT.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Transferts directs et pensions observés ou imputés}
+\label{tab:transfers}
+\small
+\begin{tabular}{lrrl}
+\toprule
+Composante & Ménages bénéficiaires & Masse & Traitement principal \\
+           & (pondérés) & (mds FCFA) & \\
+\midrule
+PSSN                       & 191~767 &  27,108 & PMT et calage administratif \\
+Bourses publiques          &  22~632 &   6,090 & montant EHCVM observé \\
+Prestations familiales     & 614~165 &  84,324 & barème et éligibilité CNPS \\
+Accidents du travail       & 751~661 &   8,276 & valeur attendue AT/MP \\
+\textbf{Transferts directs} & \textbf{1~000~914} & \textbf{125,798} & union des bénéficiaires \\
+Pensions contributives     & 215~283 & 252,603 & PDI central / PGT en sensibilité \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : les nombres de bénéficiaires sont des ménages pondérés et
+ne s'additionnent pas entre programmes. La ligne agrégée compte leur union. Les
+totaux ne comptent ni les pensions alimentaires ni les sommes reçues d'autres
+ménages, car ces flux circulent entre agents privés et ne sont pas versés par
+une administration. AT/MP signifie
+« accidents du travail et maladies professionnelles ». Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Le calage PSSN sélectionne 191~767 ménages contre une cible de 192~000 et
+reproduit exactement la masse de 27,108 milliards. Parmi les ménages imputés,
+85,9~\% se situent sous le seuil de pauvreté, contre 37,7~\% des ménages qui
+déclarent directement recevoir le programme monétaire. Le faible chevauchement
+pondéré, 972 ménages, confirme que le PMT est une reconstruction de ciblage et
+non le registre administratif.
+
+La variante « déclarés d'abord » conserve les 24~989 déclarants, puis complète
+la cible par le PMT. Elle sélectionne 192~544 ménages pondérés, maintient la
+masse à 27,108 milliards et ramène la part de bénéficiaires pauvres à 79,5~\%.
+Le profil reste favorable aux ménages modestes, mais moins que celui du PMT
+central. Cet écart mesure directement la dépendance du diagnostic distributif à
+l'absence d'appariement avec le registre social. Les autres programmes déclarés
+restent documentés : aides alimentaires, travaux HIMO, soutien COVID et
+prestations de santé ne sont pas transformés en espèces en l'absence de montant
+identifiable.
+
+L'indice de ciblage $G_{Y_D}-C_R$ vaut 0,092, avec un intervalle Rao--Wu
+$[0,040;0,149]$. Positif, il indique que les transferts sont plus concentrés vers
+le bas de la distribution que le revenu disponible, sans signifier que chaque
+composante est pro-pauvre. La figure~\ref{fig:transfers} montre notamment que le
+PSSN est concentré dans les premiers déciles, alors que prestations familiales
+et accidents du travail suivent la couverture contributive.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig18_transfers_decile.png}
+\caption{Composition des transferts publics directs par décile. Le PSSN est
+imputé et calé; les autres composantes suivent les règles décrites dans la
+méthode. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:transfers}
+\end{figure}
+
+\subsection{Réductions de prix : un bénéfice concentré parmi les ménages raccordés}
+
+Le scénario central attribue 25,15 milliards de FCFA de réductions de prix :
+8,69 milliards pour l'électricité, calés exactement sur la référence ANARE-CI,
+et 16,46 milliards pour la tranche sociale de l'eau. Aucun montant n'est
+attribué aux carburants dans le scénario central. La borne haute atteint 95,1 milliards, mais
+elle cumule volontairement trois hypothèses favorables --- 40~\% d'abonnés
+électriques sociaux, une marge de 20~\% sur l'eau de revendeur et un écart de
+80 FCFA par litre de carburant --- dont la dernière ne décrit pas directement
+2021.
+
+L'accès aux réseaux explique le profil distributif. Le premier décile reçoit
+2,1~\% du montant central et le dixième 30,1~\%. Le coefficient de concentration
+vaut 0,430 (IC à 95~\% : $[0,405;0,454]$), supérieur au Gini du revenu
+disponible; l'indice de ciblage vers les ménages modestes est donc négatif,
+$-0,097$ (IC : $[-0,121;-0,072]$). Une réduction réglementée du prix peut ainsi
+être socialement motivée sans être progressive si les ménages modestes sont
+moins souvent raccordés.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig19_subsidies_decile.png}
+\caption{Réductions de prix attribuées aux ménages par décile. Le scénario
+central valorise l'électricité et l'eau du réseau, mais aucun soutien direct au
+carburant. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:subsidies}
+\end{figure}
+
+\subsection{Éducation et santé : des services importants, mais non monétaires}
+
+Les services publics d'éducation attribués aux élèves atteignent
+1~354,87 milliards de FCFA avant paiements des familles et 1~301,62 milliards
+après frais d'inscription et contributions scolaires. Le résultat net tombe à
+1~179,5 milliards avec les seules dépenses courantes et à 1~161,6 milliards
+lorsque toutes les dépenses scolaires déclarées sont retranchées. Dans le
+scénario central, le coefficient de concentration vaut 0,170
+(IC : $[0,092;0,262]$), nettement inférieur
+au Gini du revenu disponible : le service est progressif relativement au revenu,
+même si le dixième décile reçoit 16,1~\% de la dépense nette contre 7,0~\% pour
+le premier.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig20_education_decile.png}
+\caption{Dépense publique d'éducation, paiements directs des familles et
+bénéfice net par décile. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:education-inkind}
+\end{figure}
+
+Pour la santé, les 108,53 milliards du périmètre central sont entièrement
+répartis; 81,85 milliards subsistent après les paiements directs aux structures
+publiques. La borne budgétaire large donne 108,0 milliards nets. En revanche,
+l'allocation fondée uniquement sur les consultations observées des trente
+derniers jours ne donne que 13,9 milliards nets, car les frais déclarés sont
+alors concentrés sur un petit nombre d'épisodes. Cet écart motive la moyenne de
+recours de personnes comparables dans le scénario central. Le coefficient de
+concentration est $-0,031$ (IC : $[-0,039;-0,023]$); le premier décile reçoit
+11,5~\% du bénéfice net et le dixième 9,2~\%. Aucun de ces résultats n'utilise la
+déclaration d'assurance maladie.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.88\textwidth]{fig21_health_decile.png}
+\caption{Dépense publique de santé, paiements directs et bénéfice net par
+décile. Les soins ambulatoires centraux reposent sur le recours moyen par âge,
+sexe et milieu; les hospitalisations sur l'usage observé. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:health-inkind}
+\end{figure}
+
+\subsection{Du revenu primaire au revenu final : baisse de l'inégalité, tension monétaire sur la pauvreté}
+
+Le tableau~\ref{tab:income-complete} présente la séquence CEQ complète.
+Le Gini passe de 0,3414 pour le revenu primaire PDI à 0,3336 pour le revenu
+disponible, 0,3248 pour le revenu consommable et 0,3168 pour le revenu final.
+Les impôts indirects réduisent donc l'inégalité relative tout en abaissant le
+niveau monétaire : la pauvreté passe de 37,7~\% avant intervention à 42,0~\% au
+revenu consommable. Après valorisation des services d'éducation et de santé,
+l'indicateur comptable tombe à 33,9~\%. Cette dernière valeur ne signifie pas
+que les ménages peuvent payer leur alimentation avec un service public; elle
+sert à comparer la valeur distribuée par l'État au coût de production.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Concepts de revenu CEQ complets, convention PDI}
+\label{tab:income-complete}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Concept & Moyenne annuelle & Gini & Pauvreté \\
+        & (FCFA par personne) & & (\%) \\
+\midrule
+Revenu primaire      & 547~537 & 0,3414 & 37,70 \\
+Revenu net de marché & 539~285 & 0,3345 & 37,93 \\
+Revenu brut          & 551~856 & 0,3406 & 37,38 \\
+Revenu disponible    & 543~604 & 0,3336 & 37,47 \\
+Revenu consommable   & 504~447 & 0,3248 & 42,01 \\
+Revenu final         & 551~305 & 0,3168 & 33,90 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : les revenus sont exprimés aux prix de l'enquête. Le revenu
+final ajoute les services d'éducation et de santé à leur coût de production;
+son taux de pauvreté est un indicateur comptable, non une mesure de liquidité.
+Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{fig22_income_concepts.png}
+\caption{Moyenne des concepts de revenu par décile. Les branches revenu net de
+marché et revenu brut sont des présentations parallèles autour du revenu
+primaire. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:income-complete}
+\end{figure}
+
+La décomposition de Shapley attribue la réduction totale de Gini de 0,0247 aux
+impôts indirects pour 0,0084, aux prélèvements directs pour 0,0070, à
+l'éducation pour 0,0068, à la santé pour 0,0018 et aux paiements publics directs
+pour 0,0007. Les réductions de prix accroissent légèrement l'inégalité
+($-0,00016$ de contribution à la réduction), en cohérence avec leur concentration
+parmi les ménages raccordés. Les six contributions somment exactement à la
+variation totale; l'incertitude de chacune est évaluée par rééchantillonnage
+selon le plan de sondage.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.84\textwidth]{fig23_shapley.png}
+\caption{Contribution de Shapley des six groupes d'instruments à la réduction
+du Gini. Une valeur positive réduit l'inégalité. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:shapley}
+\end{figure}
+
+La mesure non anonyme complète ce diagnostic relatif. Sous PDI, 37,47~\% de la
+population subit une perte de ressources sous le seuil et 4,34~\% devient
+nouvellement pauvre; les pertes sous le seuil totalisent 142,73 milliards de
+FCFA, contre 9,30 milliards de gains. Cette incidence élevée reflète le fait
+que beaucoup de ménages pauvres paient une taxe indirecte, même sans franchir
+le seuil. Elle ne se confond donc pas avec l'augmentation de 4,31 points du taux
+de pauvreté. Avec les seuls prélèvements et paiements directs, la population
+appauvrie n'est que de 1,09~\%, tandis que les gains sous le seuil atteignent
+31,03 milliards : l'essentiel de l'appauvrissement monétaire provient des impôts
+sur la consommation.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.84\textwidth]{fig24_fiscal_impoverishment.png}
+\caption{Appauvrissement fiscal et gains sous le seuil pour des seuils compris
+entre 0,5 et 2 fois le seuil national. Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:fiscal-impoverishment}
+\end{figure}
+
+\subsection{Validation externe et comparaison avec l'ENV 2014}
+
+Les comptes nationaux définitifs et l'Annuaire des statistiques économiques de
+l'ANStat fournissent le cadre macroéconomique principal. En 2021, la
+consommation finale des ménages atteint 26~754 milliards de FCFA, les
+importations 9~211 milliards, les impôts et droits sur les produits nets de
+subventions 3~074 milliards, la valeur ajoutée de l'enseignement 2~971 milliards
+et celle de la santé et de l'action sociale 743 milliards
+\citep{anstat2023,anstatcna2023}. Le modèle représente 16~035 milliards de
+consommation des ménages, soit 59,9~\% de l'agrégat exhaustif. Ce taux de
+couverture constitue le dénominateur naturel pour lire les autres écarts : une
+enquête auprès des ménages ne doit pas retrouver les achats des entreprises, des
+administrations et des non-résidents.
+
+La TVA directe et non déductible supportée par les ménages atteint 907,3
+milliards. Les recettes 2021 de TVA intérieure et de TVA en douane totalisent
+1~116,6 milliards dans l'annuaire ANStat, soit un ratio de 81,3~\%. Cette
+comparaison élargie complète le rapprochement entre la seule TVA directe S3
+(692,9 milliards) et la TVA intérieure DGI (556,3 milliards). Les accises et
+droits de douane contenus dans les achats des ménages atteignent 253,0
+milliards; les recettes douanières hors TVA, beaucoup plus larges, atteignent
+1~161,6 milliards. Après déduction des 25,15 milliards de réductions de prix,
+les impôts indirects nets simulés représentent 1~135,2 milliards, contre
+3~074 milliards pour l'ensemble des impôts sur les produits nets de subventions.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Rapprochement des simulations avec les agrégats ANStat et budgétaires, 2021}
+\label{tab:macro-validation}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Agrégat & Simulation & Référence & Simulation / référence \\
+        & \multicolumn{2}{c}{(milliards de FCFA)} & (\%) \\
+\midrule
+Consommation finale des ménages  & 16~034,6 & 26~754,0 & 59,9 \\
+TVA directe et non déductible    &    907,3 &  1~116,6 & 81,3 \\
+Accises, achats des ménages      &     67,9 &    292,9 & 23,2 \\
+Droits de douane, ménages        &    185,1 &    555,1 & 33,3 \\
+Impôts indirects nets des aides de prix & 1~135,2 & 3~074,0 & 36,9 \\
+IRPP, scénario central           &    225,5 &    591,6 & 38,1 \\
+PSSN                             &     27,1 &     27,1 & 100,0 \\
+Aide au secteur électrique       &      8,69&     57,5 & 15,1 \\
+Services d'éducation attribués   &  1~354,9 &  2~971,0 & 45,6 \\
+Services de santé attribués      &    108,5 &    743,0 & 14,6 \\
+Paiements publics directs        &    125,8 &    906,8 & 13,9 \\
+Pensions contributives          &    252,6 &    180,9 & 139,6 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : les références ne sont égales au périmètre simulé que
+pour le PSSN. La TVA additionne DGI et DGD; les références d'accises et de droits de
+douane reprennent les postes comparables de la loi de règlement, hors redevance
+statistique et hors TVA. Les références d'éducation et de santé sont les valeurs ajoutées
+publiques et privées des branches, non les seuls budgets distribuables. Le poste
+électrique du TOFE inclut notamment du gaz imputé; l'aide d'exploitation ANARE
+de 8,69 milliards est, elle, retrouvée exactement. La référence de paiements
+publics couvre toutes les subventions et autres transferts, et celle des pensions
+la seule CGRAE. Sources : \citet{anstat2023,anstatcna2023,anare2021,civreglement2021,civperformance2021}.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Le PIB nominal définitif 2021 est de 39~821,3 milliards de FCFA selon l'ANStat.
+La TVA totale supportée par les ménages représente ainsi 2,28~\% du PIB, l'IRPP
+central 0,57~\% et les services d'éducation attribués 3,40~\%. Les chiffres
+2022 et 2023 servent à vérifier la stabilité des
+ordres de grandeur, mais ils ne remplacent aucun paramètre 2021. La consommation
+finale des ménages passe de 26~754 milliards en 2021 à 29~510 en 2022 et
+34~059 en 2023 dans les comptes définitifs. L'annuaire publié antérieurement
+indiquait 32~721 milliards pour 2023 : cet écart de millésime statistique est
+conservé dans les sources, mais la série définitive est retenue ici; les impôts
+nets sur les produits passent de 3~074 à 3~276 puis
+4~431 milliards. Les séries ultérieures servent donc de comparaison temporelle,
+non de calage rétroactif.
+
+Ces ratios ne sont pas des objectifs d'ajustement. Le revenu et les achats sont
+sous-déclarés dans l'enquête; les comptes nationaux couvrent des agents absents
+de l'EHCVM; les recettes sont comptabilisées au moment du recouvrement; et
+certaines références réunissent plusieurs instruments. Pour chaque comparaison,
+nous indiquons la définition, le périmètre et la source au lieu de choisir le
+scénario qui reproduirait mécaniquement une recette. Le poste administratif
+« impôts sur revenus et salaires » atteint ainsi 591,6 milliards, mais il est
+plus large que l'IRPP des ménages simulé. De même, le Document de programmation
+budgétaire et économique pluriannuelle projetait 268~947 cotisants publics à la
+CGRAE en 2021 \citep{civdpbep2021}, alors que l'estimation fondée sur l'EHCVM réunit salariés
+publics et privés.
+
+La comparaison avec \citet{akim2020} apporte un second repère. Leur modèle
+OpenFisca sur l'ENV 2014 repondère les revenus vers les comptes nationaux,
+classe principalement les ménages par revenu et ne propage pas les taxes sur
+consommations intermédiaires. L'ajout des accises, droits de douane et
+transferts directs rapproche les périmètres d'instruments, mais notre
+modèle utilise le revenu disponible de consommation par tête, ne recale pas
+l'assiette salariale et ajoute la TVA enchâssée. Le tableau~\ref{tab:akim} doit
+donc être lu comme une comparaison de diagnostics, non comme une évolution
+temporelle à méthodologie constante.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Repères ENV 2014 et EHCVM 2021}
+\label{tab:akim}
+\small
+\begin{tabularx}{\textwidth}{lrrX}
+\toprule
+Indicateur & ENV 2014 & EHCVM 2021 & Différence de champ \\
+\midrule
+IRPP simulé (mds FCFA) & 326,9 & 225,5 &
+ENV recalée; EHCVM non recalée, scénario central \\
+Part IRPP du D10 (\%) & 86,0 & 66,6 &
+Concentration de l'impôt simulé \\
+Part TVA du D1 (\%) & 5,0 & 1,95 &
+TVA finale directe contre TVA directe + enchâssée S3 \\
+Part TVA du D10 (\%) & 28,0 & 33,2 &
+Classement par revenu contre $Y_D$ par tête \\
+\bottomrule
+\end{tabularx}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : les valeurs ENV sont reprises de \citet{akim2020}; les
+valeurs EHCVM sont calculées dans la présente étude. Les parts TVA sont des
+parts de la masse, non des taux effectifs.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+%=============================================================================
+\section{Simulations de réformes}
+\label{sec:reformes}
+
+\subsection{Taxer les intrants avicoles : une charge concentrée en haut de la distribution}
+
+La première simulation examine la suppression de l'exonération de TVA sur les
+intrants de la filière avicole (provende, poussins d'un jour), avec
+transmission partielle aux prix du poulet de chair. La clé du résultat est la
+courbe d'Engel du poulet : sa part budgétaire croît de 0,06~\% de la
+consommation au premier décile à 0,93~\% au dixième. La charge additionnelle
+épouse ce profil --- le décile supérieur en supporterait 45~\% --- et l'indice
+de Kakwani de la mesure ressort à $+0,24$ : la charge est progressive. L'effet
+sur la pauvreté est faible dans ce modèle statique ($+0,01$ point de $P_0$,
+moins de 500 ménages basculant sous le seuil dans le scénario de transmission
+maximale). Dans les hypothèses retenues, une taxation des intrants avicoles
+fait donc
+partie des élargissements d'assiette dont le coût distributif simulé est le plus
+faible.
+
+\subsection{Taxer la vente finale à 9~\% à TVA incorporée constante}
+
+La seconde simulation applique une taxe de 9~\% à la vente finale de produits
+initialement à taux nul. Elle maintient le vecteur $c$ de TVA incorporée
+constant et ne simule donc pas une reclassification juridique complète, qui
+ouvrirait des droits à déduction sur les intrants. Nous distinguons les
+produits agricoles et l'ensemble large hors services publics structurellement
+exonérés. La catégorie du commerce ne contient aucun produit éligible.
+
+Sous S3, la variante agricole collecte 54,1 milliards de FCFA et la variante
+large 97,2 milliards. Sans usage des recettes, elles augmentent respectivement
+$P_0$ de 0,26 et 0,47 point. Les intervalles Rao--Wu excluent zéro. La variante
+large fait basculer 141~356 personnes sous le seuil; la variante agricole,
+75~938. Ces résultats mesurent le choc de prix brut, pas le bien-être associé à
+une politique complète. Ils correspondent respectivement à 1~455 et 1~404
+nouveaux pauvres par milliard de FCFA de recette brute dans ces deux
+contrefactuels S3; ce ratio disparaît comme critère de bien-être une fois les
+recettes recyclées.
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Taxe de 9~\% sur la vente finale et recyclage universel, scénario S3}
+\label{tab:reforme}
+\begin{tabular}{lrrrr}
+\toprule
+Ensemble & Recette & Transfert & $\Delta P_0$ brut & $\Delta P_0$ recyclé \\
+         & (mds FCFA) & (FCFA/personne) & \multicolumn{2}{c}{(point)} \\
+\midrule
+Agricole & 54,1 & 1~815 & 0,26 [0,14 ; 0,38] & $-0,15$ [$-0,24$ ; $-0,06$] \\
+Large    & 97,2 & 3~260 & 0,47 [0,31 ; 0,64] & $-0,23$ [$-0,35$ ; $-0,12$] \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : S3 fait varier la taxation effective par COICOP et
+décile. Le transfert est uniforme par personne et son coût agrégé égale
+exactement la recette nominale simulée. La recette et le transfert sont
+réestimés dans chacune des 500 réplications Rao--Wu. Source : calculs des auteurs à partir de l'EHCVM 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+Le recyclage inverse le diagnostic. Le transfert agricole réduit $P_0$ de 0,15
+point; le transfert associé à la réforme large le réduit de 0,23 point. Dans
+cette dernière variante, aucun ménage initialement non pauvre ne passe sous le
+seuil après impôt et transfert, tandis qu'environ 66~980 personnes initialement
+pauvres le franchissent vers le haut. Pour l'agriculture, 1~982 personnes
+deviennent pauvres mais 45~115 en sortent. La redistribution universelle est favorable aux ménages modestes
+parce que chaque personne reçoit le même montant, alors que la taxe augmente
+avec la dépense formelle.
+
+Ce résultat est cohérent avec l'analyse de \citet{warwick2022} : juger une exonération
+à partir de son seul effet sur les prix ignore l'instrument qui pourrait être
+financé par sa suppression. Il ne suffit cependant pas à recommander la réforme.
+Le transfert universel suppose une capacité de paiement, ne comporte aucun coût
+administratif et ne modélise ni ajustement des quantités ni effet sur la
+production. Il constitue une référence transparente contre laquelle un ciblage
+réaliste pourra être comparé.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{fig_reform_fgt_impact.png}
+\caption{Variation de la pauvreté après taxation à 9~\% de la vente finale,
+avant et après recyclage universel. Le vecteur de TVA incorporée reste constant;
+barres d'erreur Rao--Wu à 95~\%.
+Source : calculs des auteurs à partir de l'EHCVM 2021.}
+\label{fig:reform-recycling}
+\end{figure}
+
+%=============================================================================
+\clearpage
+\section{Portée et limites}
+\label{sec:limites}
+
+Les résultats mesurent une incidence comptable sur les ménages observés en
+2021. Cinq limites en définissent la portée. Elles n'annulent pas les écarts
+mis en évidence, mais déterminent les interprétations qui peuvent leur être
+données. L'annexe~\ref{annexe:limites} détaille, pour chaque point, le biais
+possible, les contrôles disponibles et les données qui permettraient de le
+réduire.
+
+\paragraph{Mesure des ressources et couverture administrative.}
+La consommation de l'EHCVM sert d'approximation du revenu disponible parce
+qu'elle est mieux mesurée que le revenu courant, mais elle n'est pas un revenu
+de marché. Le revenu primaire est donc reconstruit plutôt qu'observé. Les
+salaires sont sous-déclarés, les revenus indépendants, fonciers et mobiliers
+restent incomplets, et l'enquête n'est appariée ni aux fichiers fiscaux ni aux
+registres sociaux. La déclaration d'assurance maladie est particulièrement
+fragile : elle ne retrouve qu'une partie des effectifs administratifs de la
+CMU. Les conventions PDI et PGT, les variantes d'assujettissement et la
+publication des écarts de couverture rendent ces incertitudes visibles. Elles
+ne remplacent pas un appariement individuel, qui permettrait surtout de mieux
+mesurer les prélèvements directs et l'accès effectif aux programmes.
+
+\paragraph{Incidence statique et taxation effective.}
+Le modèle maintient fixes les quantités achetées, les coefficients techniques
+et l'offre. Il décrit ainsi la transmission comptable de court terme, sans
+substitution entre produits ou intrants, réaction de production, formalisation
+ni effet d'équilibre général. De plus, l'EHCVM ne renseigne pas
+systématiquement le statut fiscal du vendeur. Le scénario S3 impute donc un
+coefficient de taxation à partir du produit et du niveau de vie. Sa matrice est
+publiée intégralement, mais elle reste exogène et n'est calée sur aucune cible
+ivoirienne. La variante S2 et la transmission intégrale encadrent cette
+hypothèse, mais ne constituent pas des réponses comportementales. Des données de caisse, de
+facturation électronique et de contrôle fiscal permettraient d'estimer la
+collecte effective; un modèle de demande et de production permettrait ensuite
+d'évaluer l'ajustement des ménages et des entreprises.
+
+\paragraph{Matrice de production et fiscalité indirecte.}
+Le TRE utilisé date de 2023, soit deux ans après l'enquête. La concordance vers
+ses 48 produits couvre 92,5~\% de la consommation pondérée, contre 95,2~\%
+pour ICIO, et applique une même part domestique aux différents usages d'un
+produit. Les accises et les droits de douane sont en outre associés à des
+postes de consommation plus agrégés que les lignes du Système harmonisé. Leur
+transmission directe est simulée, mais pas encore leur propagation par les
+intrants; leur charge totale constitue donc vraisemblablement une borne basse.
+Les variantes à prix courants, à prix constants et avec ICIO confirment la
+stabilité au choix de matrice. En revanche, la sensibilité juridique du droit à
+déduction réduit fortement la TVA incorporée : ce paramètre reste donc une
+source majeure d'incertitude. Un TRE 2021 distinguant les importations selon
+leur usage, une nomenclature administrative des droits à déduction et une
+concordance douanière plus fine réduiraient cette incertitude.
+
+\paragraph{Allocation des paiements et des services publics.}
+Le PMT reproduit une règle de ciblage du PSSN sans identifier les bénéficiaires
+du registre. Les prestations familiales et les accidents du travail reposent
+sur des règles statutaires et des indicateurs de couverture. Les réductions de
+prix de l'électricité et de l'eau sont déduites des factures et des barèmes;
+faute de prix de parité 2021 comparable, aucun soutien au carburant n'entre dans
+le scénario central. Enfin, l'éducation et la santé sont valorisées à leur coût
+moyen, sans mesurer complètement la qualité, l'assiduité ou les différences de
+coût entre établissements. Ces conventions peuvent modifier la répartition de
+chaque programme, mais pas la distinction essentielle entre un paiement
+monétaire et un service en nature. Les registres PSSN, les catégories
+tarifaires inscrites sur les factures et des comptes sectoriels plus détaillés
+permettraient de tester ces allocations.
+
+\paragraph{Comparabilité et portée temporelle.}
+La consommation mesurée dans l'EHCVM représente 59,9~\% de la consommation
+finale des ménages des comptes nationaux. Les comptes et les recettes fiscales
+couvrent en outre des entreprises et des administrations absentes de l'enquête.
+Forcer les masses simulées à reproduire ces agrégats imposerait des hypothèses
+fortes sur leur répartition entre ménages. L'étude publie donc les écarts de
+périmètre et utilise les valeurs 2022--2023 comme contrôles, non comme cibles de
+calage. Les résultats décrivent l'incidence sur les ménages ivoiriens en 2021;
+ils ne constituent ni une réconciliation exhaustive des recettes publiques ni
+une prévision de l'effet d'une réforme à une autre date.
+\clearpage
+\section{Conclusion}
+\label{sec:conclusion}
+
+En 2021, l'ensemble des impôts et des dépenses publiques réduit l'inégalité
+mesurée en Côte d'Ivoire, mais ne protège pas tous les ménages contre la perte
+de pouvoir d'achat. Dans le scénario central, le Gini passe de 0,3414 pour le
+revenu primaire à 0,3168 pour le revenu final. Au revenu consommable, avant la
+valorisation de l'éducation et de la santé, le taux de pauvreté atteint pourtant
+42,0~\%, contre 37,7~\% au revenu primaire, et 4,34~\% de la population passe
+sous le seuil national. Les pertes monétaires sous ce seuil atteignent
+142,7 milliards de FCFA. La baisse de l'inégalité et l'appauvrissement fiscal
+mesurent donc deux dimensions distinctes du même système.
+
+La composition des interventions explique ce contraste. L'impôt sur le revenu
+est très progressif, mais son assiette ne touche qu'une minorité de ménages. Les
+paiements publics directs restent trop faibles pour compenser la charge des
+taxes sur la consommation : les quatre programmes centraux totalisent
+125,8 milliards de FCFA, dont 27,1 milliards pour le PSSN. L'éducation et la
+santé fournissent l'essentiel du bénéfice redistributif, avec respectivement
+1~301,6 et 81,85 milliards nets des paiements des familles. Ces services
+améliorent le revenu final au sens comptable, mais ne financent pas les achats
+courants. Le taux de pauvreté de 33,9~\% calculé après leur valorisation ne doit
+donc pas être lu comme une mesure de liquidité.
+
+La simulation livre une implication directe pour la politique fiscale. Une
+taxe de 9~\% sur la vente finale de certains produits accroît la pauvreté de
+0,47 point lorsque la recette n'est pas restituée. Ce calcul maintient la TVA
+incorporée constante et ne représente donc pas une reclassification juridique
+complète. Un transfert uniforme financé par les 97,2 milliards de FCFA
+collectés réduit au contraire la pauvreté de 0,23 point.
+L'élargissement de l'assiette et la protection des ménages modestes peuvent donc
+être compatibles, mais seulement si le mécanisme de restitution est explicite,
+financé et effectivement accessible. Le transfert universel simulé sert ici de
+référence budgétairement neutre; il ne tranche pas entre universalité et ciblage.
+
+Les prochaines améliorations doivent réduire les écarts entre simulation et
+administration plutôt qu'ajouter des conventions invisibles. L'appariement de
+l'EHCVM avec les registres fiscaux et sociaux permettrait d'observer la taxation
+effective, l'assujettissement salarial et les bénéficiaires du PSSN. Un TRE de
+2021 distinguant les importations selon leur usage améliorerait la mesure des
+taxes incorporées aux prix. Enfin, un modèle de demande et de production
+permettrait d'étudier les changements de consommation, de formalisation et de
+coûts administratifs. Ces extensions rendraient possible la comparaison de
+réformes à la fois redistributives, finançables et applicables.
+\clearpage
+\bibliographystyle{apalike}
+\bibliography{references}
+
+%=============================================================================
+\clearpage
+\appendix
+
+\section{Barèmes des impôts directs (CGI 2021)}
+\label{annexe:baremes}
+
+L'impôt sur les salaires (IS) vaut 1,5~\% de la base imposable, définie comme
+80~\% du salaire brut imposable (SBI), soit 1,2~\% du SBI. La contribution
+nationale (CN) s'applique à la même base selon les tranches mensuelles
+suivantes : 0~\% jusqu'à 50~000 FCFA ; 1,5~\% de 50~001 à 130~000 ; 5~\% de
+130~001 à 200~000 ; 10~\% au-delà. La base de l'IGR vaut
+$B_{\mathrm{IGR}} = 0{,}8\,(SBI - IS - CN)$ ; le quotient
+$Q = B_{\mathrm{IGR}}/N$ est soumis au barème
+mensuel du tableau~\ref{tab:bareme-igr}, l'impôt par part étant ensuite
+multiplié par $N$ puis réduit de 15~\%. Le nombre de parts $N$ (plafonné à 5)
+vaut 1 pour un célibataire, divorcé ou séparé, 1,5 pour un veuf, 2 pour un
+marié, plus 0,5 par enfant à charge. La cotisation retraite CNPS salariale vaut
+6,3~\% du SBI plafonné à 1~647~315 FCFA par mois; la contribution CMU simulée
+vaut 1~000 FCFA par mois et par adulte contributif participant.
+
+\begin{table}[h]
+\centering
+\begin{threeparttable}
+\caption{Barème mensuel de l'IGR par part ($Q = B_{\mathrm{IGR}}/N$, en FCFA)}
+\label{tab:bareme-igr}
+\begin{tabular}{lc}
+\toprule
+Tranche de $Q$ & Impôt par part \\
+\midrule
+$Q \le 25~000$            & $0$ \\
+$25~000 < Q \le 45~000$   & $Q \times 10/110 - 2~273$ \\
+$45~000 < Q \le 60~000$   & $Q \times 15/115 - 4~076$ \\
+$60~000 < Q \le 80~000$   & $Q \times 20/120 - 7~083$ \\
+$80~000 < Q \le 100~000$  & $Q \times 25/125 - 11~000$ \\
+$100~000 < Q \le 120~000$ & $Q \times 30/130 - 15~769$ \\
+$120~000 < Q \le 140~000$ & $Q \times 35/135 - 21~296$ \\
+$140~000 < Q \le 160~000$ & $Q \times 40/140 - 27~500$ \\
+$160~000 < Q \le 180~000$ & $Q \times 45/145 - 34~310$ \\
+$180~000 < Q \le 200~000$ & $Q \times 50/150 - 41~667$ \\
+$Q > 200~000$             & $Q \times 60/160 - 57~813$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}\footnotesize
+\item \emph{Notes} : IGR final $= (\text{impôt par part} \times N) \times 0{,}85$.
+Source : Code général des impôts de Côte d'Ivoire, édition 2021.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\section{Concordance de la nomenclature intermédiaire vers le TRE}
+\label{annexe:mapping-io}
+
+Le matériel de réplication du projet contient une concordance détaillée,
+initialement fournie dans le programme Stata de référence, qui associe chaque
+poste de consommation à l'un des 52 secteurs intermédiaires. Le pipeline R
+extrait ce tableau, vérifie l'unicité de chaque affectation, puis applique la
+passerelle ci-dessous. Les doublons apparents correspondent à des catégories
+intermédiaires plus détaillées que le TRE : par exemple, les secteurs 1 et 2
+sont tous deux regroupés dans \texttt{A01}. Aucun item n'est réparti entre
+plusieurs branches. La liste exhaustive au niveau item est exportée dans
+\texttt{13\_04\_itemid\_to\_tre\_mapping\_current.xlsx}; la passerelle est
+exportée dans \texttt{13\_05\_wb52\_to\_tre48\_bridge\_current.xlsx}.
+
+\begin{longtable}{rr@{\hspace{1.6cm}}rr}
+\caption{Passerelle des 52 secteurs intermédiaires vers les 48 produits du TRE}
+\label{tab:mapping-52-48}\\
+\toprule
+Secteur interm. & Code TRE & Secteur interm. & Code TRE \\
+\midrule
+\endfirsthead
+\toprule
+Secteur interm. & Code TRE & Secteur interm. & Code TRE \\
+\midrule
+\endhead
+1  & \texttt{A01} & 27 & \texttt{C23} \\
+2  & \texttt{A01} & 28 & \texttt{C24} \\
+3  & \texttt{A02} & 29 & \texttt{C25} \\
+4  & \texttt{A03} & 30 & \texttt{C26} \\
+5  & \texttt{A04} & 31 & \texttt{C27} \\
+6  & \texttt{A05} & 32 & \texttt{C28} \\
+7  & \texttt{A06} & 33 & \texttt{C29} \\
+8  & \texttt{B07} & 34 & \texttt{C30} \\
+9  & \texttt{C08} & 35 & \texttt{D31} \\
+10 & \texttt{C09} & 36 & \texttt{E32} \\
+11 & \texttt{C10} & 37 & \texttt{F33} \\
+12 & \texttt{C11} & 38 & \texttt{G34} \\
+13 & \texttt{C12} & 39 & \texttt{H35} \\
+14 & \texttt{C13} & 40 & \texttt{I36} \\
+15 & \texttt{C13} & 41 & \texttt{J37} \\
+16 & \texttt{C14} & 42 & \texttt{K38} \\
+17 & \texttt{C15} & 43 & \texttt{L39} \\
+18 & \texttt{C16} & 44 & \texttt{M40} \\
+19 & \texttt{C17} & 45 & \texttt{N41} \\
+20 & \texttt{C18} & 46 & \texttt{O42} \\
+21 & \texttt{C19} & 47 & \texttt{P43} \\
+22 & \texttt{C19} & 48 & \texttt{Q44} \\
+23 & \texttt{C20} & 49 & \texttt{R45} \\
+24 & \texttt{C21} & 50 & \texttt{S46} \\
+25 & \texttt{C21} & 51 & \texttt{T47} \\
+26 & \texttt{C22} & 52 & \texttt{U48} \\
+\bottomrule
+\end{longtable}
+
+\clearpage
+\section{Paramètres publiés du scénario S3}
+\label{annexe:s3-parameters}
+
+Le scénario S3 applique la règle de l'équation~\eqref{eq:alpha-s3}. Le tableau
+\ref{tab:s3-matrix} publie les paramètres et chaque coefficient utilisé par le
+code. Les divisions 98 et 99 désignent respectivement la valeur d'usage des
+biens durables et les postes hors champ; elles ne supportent aucune TVA. Ces
+valeurs sont exogènes. Aucune cible de recette, de pauvreté ou de formalité
+ivoirienne n'a servi à les calibrer.
+
+\begin{table}[h]
+\centering
+\caption{Matrice exacte des coefficients de taxation effective du scénario S3}
+\label{tab:s3-matrix}
+\scriptsize
+\setlength{\tabcolsep}{2.6pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+Fonction COICOP & $a_k$ & $s_k$ & D1 & D2 & D3 & D4 & D5 & D6 & D7 & D8 & D9 & D10 \\
+\midrule
+1 Alimentation & .120 & .034 & .120 & .154 & .188 & .222 & .256 & .290 & .324 & .358 & .392 & .426 \\
+2 Alcool et tabac & .480 & .024 & .480 & .504 & .528 & .552 & .576 & .600 & .624 & .648 & .672 & .696 \\
+3 Vêtements et chaussures & .220 & .030 & .220 & .250 & .280 & .310 & .340 & .370 & .400 & .430 & .460 & .490 \\
+4 Logement et énergie & .620 & .022 & .620 & .642 & .664 & .686 & .708 & .730 & .752 & .774 & .796 & .818 \\
+5 Équipement du logement & .220 & .028 & .220 & .248 & .276 & .304 & .332 & .360 & .388 & .416 & .444 & .472 \\
+6 Santé & .300 & .040 & .300 & .340 & .380 & .420 & .460 & .500 & .540 & .580 & .620 & .660 \\
+7 Transport & .250 & .038 & .250 & .288 & .326 & .364 & .402 & .440 & .478 & .516 & .554 & .592 \\
+8 Information et communication & .780 & .015 & .780 & .795 & .810 & .825 & .840 & .855 & .870 & .885 & .900 & .915 \\
+9 Loisirs et culture & .280 & .032 & .280 & .312 & .344 & .376 & .408 & .440 & .472 & .504 & .536 & .568 \\
+10 Éducation & .550 & .025 & .550 & .575 & .600 & .625 & .650 & .675 & .700 & .725 & .750 & .775 \\
+11 Restaurants et hôtels & .120 & .038 & .120 & .158 & .196 & .234 & .272 & .310 & .348 & .386 & .424 & .462 \\
+12 Assurance et finance & .850 & .010 & .850 & .860 & .870 & .880 & .890 & .900 & .910 & .920 & .930 & .940 \\
+13 Soins personnels et divers & .150 & .034 & .150 & .184 & .218 & .252 & .286 & .320 & .354 & .388 & .422 & .456 \\
+98 Valeur d'usage des durables & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 \\
+99 Hors champ & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 & .000 \\
+\bottomrule
+\end{tabular}}
+\begin{minipage}{0.98\textwidth}
+\footnotesize\emph{Notes} : $a_k$ est le coefficient au premier décile et
+$s_k$ sa hausse par décile. D1--D10 donnent directement $\alpha_{kd}$. Le
+classeur de réplication \texttt{06\_03\_vat\_informality\_parameters.xlsx}
+publie aussi les paramètres S2 et la matrice sous forme lisible par machine.
+\end{minipage}
+\end{table}
+
+Après pondération par les dépenses observées de chaque décile, le profil
+implicite de taxation effective vaut 0,266 en D1, 0,294 en D2, 0,325 en D3,
+0,354 en D4, 0,386 en D5, 0,421 en D6, 0,450 en D7, 0,486 en D8, 0,522 en D9
+et 0,578 en D10. Ce profil est une conséquence de la matrice et des paniers de
+consommation; il n'est pas une cible de calage. S3 doit donc être lu comme une
+hypothèse structurante publiée, encadrée par S2 et par la transmission intégrale.
+\clearpage
+\section{Détail des limites et données nécessaires}
+\label{annexe:limites}
+
+Cette annexe conserve les réserves techniques dans un format opérationnel.
+Chaque point distingue la source d'incertitude, son effet possible, le contrôle
+mis en œuvre et l'information qui permettrait de le réduire.
+
+\begin{enumerate}
+\item \textbf{Point d'entrée et pensions.} La consommation observée est
+l'ancre du revenu disponible; le revenu primaire est reconstruit. Cette
+convention peut modifier le niveau des revenus antérieurs sans changer le
+revenu disponible observé. Les conventions PDI et PGT encadrent le traitement
+des pensions. Des données conjointes de revenu, consommation et pensions
+administratives permettraient une reconstruction directe.
+
+\item \textbf{Réactions comportementales.} Les quantités, l'offre et les
+coefficients techniques sont fixes. Les simulations mesurent donc un effet
+comptable de court terme, qui peut différer de l'effet après substitution ou
+formalisation. Les scénarios de transmission testent l'incidence immédiate; un
+système de demande et un modèle de production seraient nécessaires pour mesurer
+les ajustements.
+
+\item \textbf{Informalité des achats.} Le statut fiscal du vendeur n'est pas
+observé pour chaque transaction. Les scénarios S2, S3 et de transmission
+intégrale encadrent la charge, sans identifier la probabilité réelle de
+collecte. Des tickets de caisse, des factures électroniques ou un appariement
+avec les déclarations de TVA permettraient de l'estimer.
+
+\item \textbf{TRE et concordance sectorielle.} Le TRE 2023 est postérieur à
+l'EHCVM 2021, sa concordance couvre 92,5~\% de la consommation pondérée et la
+part importée est commune aux différents usages d'un produit. Les matrices à
+prix constants et ICIO servent de contrôles. Un TRE 2021 séparant les usages
+domestiques et importés serait préférable.
+
+\item \textbf{Impôts directs et CMU.} L'assujettissement salarial est imputé et
+les revenus non salariaux sont incomplets. Sur une assiette salariale commune,
+l'IRPP vaut 192,0 milliards dans le scénario strict, 215,6 milliards dans le
+scénario élargi et 225,5 milliards dans le scénario central. Une non-réponse
+n'est jamais recodée comme emploi formel. La déclaration d'assurance ne retrouve
+que 50~641 participants pauvres et 885~822 non-pauvres, contre des cibles de
+75~000 et 1~425~000. Les fichiers fiscaux, sociaux et de la CMU permettraient de
+remplacer ces bornes par une observation administrative.
+
+\item \textbf{Accises et droits de douane.} Les taux sont affectés à des postes
+plus agrégés que les lignes douanières et les parts importées proviennent du
+TRE. La transmission directe est simulée, mais pas la propagation des taxes
+payées sur les intrants. Les estimations sont donc susceptibles de sous-estimer
+la charge totale. Une concordance entre dépenses, lignes du Système harmonisé
+et usages du TRE permettrait de compléter la propagation.
+
+\item \textbf{Paiements publics et PSSN.} Le PMT reproduit un ciblage mais ne
+reconnaît pas les bénéficiaires réels. Le chevauchement avec les déclarations de
+l'enquête et la variante qui retient d'abord tous les déclarants sont publiés.
+Les prestations familiales et les
+accidents du travail suivent des règles statutaires; les aides en nature ne sont
+pas monétisées sans montant fiable. L'appariement au registre social et aux
+fichiers des organismes payeurs est le contrôle décisif.
+
+\item \textbf{Réductions publiques de prix.} L'électricité est calée sur
+8,69 milliards de FCFA d'aide d'exploitation, mais les abonnés sociaux sont
+identifiés par leur rang de facture. Pour l'eau, le volume est déduit du barème
+et le prix des revendeurs n'est pas observé. Aucun soutien au carburant n'est
+retenu au centre faute de prix de parité 2021 auditable. Les catégories
+contractuelles, volumes facturés et prix de référence officiels permettraient
+de tester ces imputations.
+
+\item \textbf{Éducation et santé.} Les services sont valorisés à un coût moyen
+sans mesurer intégralement leur qualité, leur assiduité ou les écarts entre
+établissements. La santé lisse les consultations ambulatoires par âge, sexe et
+milieu; une variante fondée sur le seul usage observé donne une borne plus
+basse. Le coût attribué n'est ni un revenu liquide ni un consentement à payer.
+Des comptes sectoriels par niveau de service et des données administratives
+d'utilisation affineraient l'incidence.
+
+\item \textbf{Comparaison avec les comptes nationaux.} La consommation de
+l'EHCVM ne représente que 59,9~\% de l'agrégat des comptes nationaux, tandis que
+les recettes couvrent aussi les entreprises et les administrations. L'étude
+publie ces écarts et les séries 2022--2023 plutôt que de caler globalement les
+ménages. Une réconciliation complète exigerait des comptes de ménages par
+niveau de vie et des recettes ventilées par secteur institutionnel.
+\end{enumerate}
+\section{Accès au code et protocole de réplication}
+\label{annexe:pipeline}
+
+\subsection{Dépôt public et version de référence}
+
+Le code et la documentation méthodologique sont maintenus dans le dépôt GitHub
+public \url{https://github.com/cae-ins/anstat-microsim}. Le dépôt peut être
+consulté et cloné sans compte GitHub. La branche par défaut est
+\texttt{main}; la branche \texttt{rewrite-r} porte l'implémentation R utilisée
+dans cette étude. Le clonage de cette branche s'effectue depuis un terminal par
+les commandes suivantes :
+
+\begin{verbatim}
+git clone --branch rewrite-r --single-branch \
+  https://github.com/cae-ins/anstat-microsim.git
+cd anstat-microsim
+\end{verbatim}
+
+Une branche est un objet évolutif. Pour qu'une réplication puisse identifier
+sans ambiguïté la version du modèle, le numéro de révision obtenu par
+\texttt{git rev-parse HEAD} doit donc être conservé avec les résultats. Lors de
+la diffusion définitive du papier, cette révision sera gelée dans une
+\emph{release} GitHub portant le même numéro de version que le manuscrit. Cette
+précaution distingue l'adresse durable du projet de l'état exact du code ayant
+produit un tableau ou une figure.
+
+\subsection{Accès aux microdonnées et périmètre du dépôt}
+
+Le dépôt public fournit le code et la documentation, mais ne duplique pas les
+microdonnées. L'EHCVM 2021--2022 peut être obtenue par deux canaux officiels :
+le centre de calcul de l'ANStat
+(\url{https://centredecalcul.anstat.ci/index.php/welcome}) et le catalogue de
+microdonnées de la Banque mondiale
+(\url{https://microdata.worldbank.org/index.php/catalog/6273}), où l'enquête
+porte la référence \texttt{CIV\_2021\_EHCVM-2\_v01\_M}. Le catalogue fournit
+les données anonymisées de diffusion publique, leur dictionnaire et les
+questionnaires. Dans les deux cas, l'utilisateur doit respecter les conditions
+d'accès, de confidentialité et de citation affichées au moment du
+téléchargement, et consigner la source ainsi que la date de téléchargement.
+
+Les fichiers individuels de l'EHCVM, les données intermédiaires et les sorties
+générées sont exclus du versionnement Git. Cette séparation évite de
+redistribuer des microdonnées en dehors des conditions acceptées par
+l'utilisateur et oblige le réplicateur à acquérir les fichiers auprès d'un des
+catalogues officiels. Le tableau~\ref{tab:acces-replication} précise cette
+frontière.
+
+\begin{longtable}{>{\RaggedRight\arraybackslash}p{3.2cm}
+  >{\RaggedRight\arraybackslash}p{5.0cm}
+  >{\RaggedRight\arraybackslash}p{6.1cm}}
+\caption{Accessibilité des composantes de la réplication}
+\label{tab:acces-replication}\\
+\toprule
+Composante & Emplacement attendu & Accessibilité et rôle \\
+\midrule
+\endfirsthead
+\toprule
+Composante & Emplacement attendu & Accessibilité et rôle \\
+\midrule
+\endhead
+Code R et documentation &
+\path{05_scripts_R/} et \path{00_documentation/} &
+Publics sur GitHub; ils définissent les transformations, les hypothèses,
+les contrôles et la production du papier. \\
+Microdonnées EHCVM harmonisées &
+\path{01_data_sources/Dataout/} &
+Accessibles par les catalogues de l'ANStat et de la Banque mondiale, puis à
+placer localement dans ce répertoire; elles ne sont pas recopiées dans Git. \\
+Modules ménages détaillés &
+\path{01_data_sources/Datain/Menage/} &
+Accessibles dans la livraison EHCVM. Les modules d'emploi et de couverture
+maladie sont notamment requis pour les prélèvements directs et la CMU. \\
+Paramètres fiscaux et concordances &
+\path{01_data_sources/} &
+Le classeur de taux par poste de consommation et les concordances sectorielles
+doivent être placés aux chemins lus par les scripts. Leur version doit être
+identique à celle associée à la release de réplication. \\
+Matrices entrées--sorties &
+\path{01_data_sources/IO/} &
+Les fichiers ICIO et les TRE ivoiriens courant et constant sont à obtenir
+auprès de leurs producteurs puis à déposer dans ce répertoire. \\
+Intermédiaires et résultats &
+\path{02_data_intermediate/} et \path{07_reports/} &
+Non versionnés car entièrement reconstruits. Les fichiers parquet assurent les
+passages entre étapes; les classeurs et figures constituent les sorties
+publiables. \\
+\bottomrule
+\end{longtable}
+
+Les noms techniques sont utiles ici parce qu'ils permettent au réplicateur de
+placer les entrées sans ambiguïté. Les trois fichiers EHCVM harmonisés attendus
+par le cœur du pipeline sont
+\path{ehcvm_conso_CIV2021.dta},
+\path{ehcvm_welfare_2b_CIV2021.dta} et
+\path{ehcvm_individu_CIV2021.dta}. Les prélèvements directs mobilisent les
+modules d'emploi et de santé; les transferts ajoutent les modules d'éducation,
+d'emploi, de pensions, de transferts privés et de programmes sociaux. L'incidence
+indirecte requiert le classeur de TVA, les paramètres 2021 d'accises et du TEC,
+la concordance sectorielle, ICIO 2020 et les deux TRE 2023. La présence d'un nom
+de fichier dans le code ne vaut pas autorisation de redistribution de son
+contenu.
+
+Ces trois fichiers harmonisés ne résultent pas d'un simple changement de nom
+des fichiers téléchargés. Ils constituent la couche préparée officielle :
+les modules individuels et ménages sont d'abord assemblés, les dépenses par
+poste sont annualisées et agrégées, puis l'agrégat de bien-être et son
+déflateur spatial sont construits selon la variante nationale 2b. Les
+programmes de préparation correspondants sont conservés dans
+\path{01_data_sources/Programs/}; ils produisent successivement les fichiers
+d'individus, de consommation et de bien-être attendus dans
+\path{01_data_sources/Dataout/}. Un utilisateur partant des modules bruts doit
+donc exécuter cette préparation, après avoir adapté uniquement les chemins
+d'entrée et de sortie à son installation. Cette étape préalable requiert Stata;
+elle n'est pas nécessaire lorsque le catalogue ou l'ANStat fournit directement
+la livraison harmonisée. Le pipeline R commence après cette harmonisation et
+ne doit pas être lancé sur des fichiers bruts simplement renommés.
+
+\subsection{Architecture et inventaire du pipeline}
+
+L'ensemble des résultats est produit par un pipeline R de vingt-six étapes. Les
+données brutes restent dans \path{01_data_sources}; les transformations
+intermédiaires sont écrites en parquet dans \path{02_data_intermediate}; les
+tableaux et figures sont déposés dans \path{07_reports}. Le fichier
+\path{05_scripts_R/00_setup.R} centralise les chemins, charge les dépendances et
+les fonctions communes. Le fichier \path{05_scripts_R/00_master.R} déclare
+l'ordre d'exécution et expose l'orchestrateur \texttt{lance\_pipeline}. Son
+chargement prépare l'environnement sans lancer de simulation.
+
+\begin{longtable}{>{\centering\arraybackslash}p{1.2cm}
+  >{\RaggedRight\arraybackslash}p{4.5cm}
+  >{\RaggedRight\arraybackslash}p{8.0cm}}
+\caption{Inventaire des étapes du pipeline R}
+\label{tab:inventaire-pipeline}\\
+\toprule
+Étape & Script principal & Objet \\
+\midrule
+\endfirsthead
+\toprule
+Étape & Script principal & Objet \\
+\midrule
+\endhead
+1 & \path{01_prepare_data.R} & Import, contrôles, achats observés et
+winsorisation de la consommation. \\
+2 & \path{02_mapping_tax.R} & Appariement des postes de consommation aux taux
+statutaires de TVA. \\
+3 & \path{03_compute_taxes.R} & Calcul de la TVA directe au niveau du ménage. \\
+4 & \path{04_analysis.R} & Profils par décile, quintile, milieu et région. \\
+5 & \path{05_progressivity.R} & Gini, concentration, Kakwani et
+Reynolds--Smolensky. \\
+6 & \path{06_01_sensitivity_taxation.R} &
+Scénarios de taxation effective liés à l'informalité des achats. \\
+7 & \path{06_02_sensitivity_ranking.R} &
+Sensibilité aux unités et variables de classement. \\
+8 & \path{07_appendix_tables.R} & Tableaux distributifs complémentaires. \\
+9 & \path{08_figures.R} & Figures principales de l'incidence de la TVA. \\
+10 & \path{09_vat_determinants.R} & Corrélats du taux effectif de TVA. \\
+11 & \path{10_reform_chicken_inputs.R} & Simulation sur les intrants avicoles. \\
+12 & \path{11_reform_figures.R} & Figures associées à cette simulation. \\
+13 & \path{12_poverty_incidence.R} & Indices FGT avant et après fiscalité
+indirecte. \\
+14 & \path{13_leontief_io.R}, \path{13b_leontief_local_io.R} &
+Propagation de la TVA non déductible avec ICIO et avec les TRE ivoiriens. \\
+15 & \path{14_leontief_poverty.R} & Pauvreté après incorporation de la TVA
+enchâssée. \\
+16 & \path{15_reform_vat_simulation.R} & Taxe de 9~\% sur la vente finale à
+TVA incorporée constante, scénarios d'informalité et recyclage budgétairement
+neutre. \\
+17 & \path{16_direct_taxes.R} & Impôts directs, cotisations sociales et
+diagnostics d'assujettissement. \\
+18 & \path{17_indirect_other.R} & Accises, droits de douane, cascade TTC et
+validation des concordances TRE--TEC. \\
+19 & \path{18_transfers.R} & Pensions, transferts directs, filets sociaux et
+reconstruction des branches PDI et PGT. \\
+20 & \path{19_subsidies.R} & Réductions de prix de l'électricité et de l'eau;
+carburants en robustesse seulement. \\
+21 & \path{20_inkind_education.R} & Dépenses publiques d'éducation attribuées
+par niveau, brutes et nettes des paiements. \\
+22 & \path{21_inkind_health.R} & Soins ambulatoires moyens, hospitalisations
+observées, paiements directs et robustesses. \\
+23 & \path{22_income_concepts.R} & Assemblage et contrôle des revenus primaire,
+net, brut, disponible, consommable et final. \\
+24 & \path{23_marginal_contribution.R} & Contributions avec/sans, concentration
+et décomposition exacte de Shapley. \\
+25 & \path{24_fiscal_impoverishment.R} & Appauvrissement fiscal, gains sous le
+seuil, dominance et inférence Rao--Wu. \\
+26 & \path{25_ceq_report_tables.R} & Classeur CEQ final, contrôle macroéconomique
+ANStat, dictionnaire et manifeste de réplication. \\
+\bottomrule
+\end{longtable}
+
+Les fonctions distributives partagées se trouvent dans
+\path{05_scripts_R/utils/distributive.R}; la résolution du modèle de prix, les
+scénarios de TVA et la concordance TRE sont isolés dans
+\path{utils/leontief_vat.R}, \path{utils/vat_scenarios.R} et
+\path{utils/tre_mapping.R}. Les barèmes de 2021 sont documentés séparément
+dans \path{00_documentation/methodologie/MEMOIRE_FISCAL_CIV2021.md}. Cette
+organisation permet de relier chaque résultat à une étape tout en évitant de
+réimprimer plusieurs centaines de lignes de code dans le papier.
+
+\subsection{Installation, contrôles et exécution}
+
+L'environnement de référence utilise R~4.5.3. Le fichier \path{renv.lock} fixe
+les versions des paquets et \path{replication_package/environment/sessionInfo.txt}
+documente la plateforme de référence. Depuis la racine du dépôt, un économiste
+peut restaurer cet environnement puis lancer les contrôles par :
+
+\begin{verbatim}
+Rscript --vanilla replication_package/code/00_restore_environment.R
+Rscript --vanilla replication_package/code/00_preflight.R
+\end{verbatim}
+
+Le premier programme installe les versions enregistrées dans la bibliothèque
+isolée du projet. Le second vérifie la version de R, les paquets, l'arborescence,
+les vingt entrées attendues, leur taille et leur empreinte MD5. Il compare ces
+informations au manifeste \path{replication_package/data/data_manifest.csv} et
+s'arrête dès qu'un contrôle obligatoire échoue. Les microdonnées ne sont jamais
+recopiées dans le paquet; le fichier
+\path{replication_package/data/access-restricted-data.md} explique leur accès et
+leur emplacement.
+
+Après un pré-contrôle sans échec, une seule commande reconstruit les vingt-six
+étapes :
+
+\begin{verbatim}
+Rscript --vanilla replication_package/code/00_run_all.R
+\end{verbatim}
+
+Ce point d'entrée extrait automatiquement les matrices des classeurs TRE si les
+fichiers intermédiaires n'existent pas, exécute les étapes dans leur ordre,
+conserve le journal et appelle la vérification finale. Il n'installe aucun paquet
+silencieusement. Pour contrôler des sorties déjà produites sans relancer les
+calculs, la commande est :
+
+\begin{verbatim}
+Rscript --vanilla replication_package/code/01_verify_outputs.R
+\end{verbatim}
+
+Le vérificateur compare les indicateurs centraux aux valeurs attendues dans
+\path{replication_package/output/expected_metrics.csv}. Il contrôle notamment
+les Gini, les taux de pauvreté, l'appauvrissement fiscal, la masse du PSSN et la
+décomposition de Shapley. Les rapports
+\path{preflight_report.csv} et \path{verification_report.csv} doivent contenir
+zéro échec. Une exécution d'une plage, par exemple
+\texttt{lance\_pipeline(17,17)}, reste utile pour développer un module, mais ne
+constitue pas une réplication depuis les entrées.
+
+\subsection{Deux parcours de réplication : lecteur et agent}
+
+Le fichier \path{replication_package/README.md} donne à un économiste la liste
+des données, les commandes, les sorties attendues et le lien entre chaque
+tableau ou figure et son programme. Le manifeste
+\path{replication_package/exhibit_map.csv} fournit la même correspondance sous
+forme tabulaire. Les besoins en mémoire, espace disque, logiciels et temps
+d'exécution sont consignés dans
+\path{replication_package/environment/computational_requirements.md}.
+
+Un agent de programmation suit exactement le même point d'entrée. Le fichier
+\path{AGENTS.md} fixe les règles du dépôt; le guide
+\path{replication_package/AGENT_RUNBOOK.md} décrit les contrôles autorisés, les
+données confidentielles et les conditions d'arrêt; enfin,
+\path{replication_package/replication_spec.json} expose les entrées, commandes
+et critères de succès dans un format lisible par machine. Ces fichiers ne créent
+pas une seconde méthode : ils traduisent le protocole humain sans modifier les
+hypothèses ni les tolérances numériques.
+
+Le manuscrit est reconstruit depuis
+\path{00_documentation/working_paper/} par un passage \texttt{pdflatex}, un
+passage \texttt{bibtex}, puis deux nouveaux passages \texttt{pdflatex}. La
+révision Git, le journal de calcul, \texttt{sessionInfo()} et les deux rapports
+de contrôle doivent accompagner les résultats diffusés. Une réplication publique
+complète exige enfin que la version utilisée soit gelée dans une release et que
+la licence de diffusion du code soit explicitement approuvée.
+\end{document}

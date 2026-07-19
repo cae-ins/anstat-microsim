@@ -32,3 +32,25 @@ Thumbs.db
 
 # Environment variables — never commit credentials
 .env
+
+# Le paquet de réplication contient manifestes, scripts et petits rapports.
+!replication_package/
+!replication_package/**
+# Sources externes et paramètres : distribution via MinIO ultérieure
+01_data_sources/reference_external/
+
+# Espaces de travail et réglages locaux des agents
+.claude/worktrees/
+
+# Artefacts locaux de compilation et de contrôle du working paper
+00_documentation/working_paper/*.aux
+00_documentation/working_paper/*.bbl
+00_documentation/working_paper/*.blg
+00_documentation/working_paper/*.out
+00_documentation/working_paper/pass*.txt
+00_documentation/working_paper/preview/
+00_documentation/working_paper/bibcheck_*/
+00_documentation/working_paper/DT_CEQ_CIV2021_revised.*
+/DT_CEQ_CIV2021.pdf
+~$*
+replication_package/output/logs/

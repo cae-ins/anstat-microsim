@@ -1,0 +1,12 @@
+.git/
+.claude/
+.agents/
+00_documentation/
+01_data_sources/
+02_data_intermediate/
+03_data_output/
+04_scripts/
+06_logs/
+07_reports/
+08_lit_review/
+replication_package/output/

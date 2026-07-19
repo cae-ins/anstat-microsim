@@ -42,13 +42,23 @@ for (d in c(
   file.path(SILVER, "05"), file.path(SILVER, "06"),
   file.path(SILVER, "10"), file.path(SILVER, "13"),
   file.path(SILVER, "14"), file.path(SILVER, "15"),
+  file.path(SILVER, "16"), file.path(SILVER, "17"),
+  file.path(SILVER, "18"), file.path(SILVER, "19"),
+  file.path(SILVER, "20"), file.path(SILVER, "21"),
+  file.path(SILVER, "22"), file.path(SILVER, "23"),
+  file.path(SILVER, "24"),
   GOLD, LOGS,
   file.path(ROOT, "07_reports"), TABLES,
   file.path(TABLES, "01"), file.path(TABLES, "04"),
   file.path(TABLES, "05"), file.path(TABLES, "06"),
   file.path(TABLES, "07"), file.path(TABLES, "09"),
   file.path(TABLES, "10"), file.path(TABLES, "12"),
-  file.path(TABLES, "14"), file.path(TABLES, "15"),FIGS
+  file.path(TABLES, "14"), file.path(TABLES, "15"),
+  file.path(TABLES, "16"), file.path(TABLES, "17"),
+  file.path(TABLES, "18"), file.path(TABLES, "19"),
+  file.path(TABLES, "20"), file.path(TABLES, "21"),
+  file.path(TABLES, "22"), file.path(TABLES, "23"),
+  file.path(TABLES, "24"), file.path(TABLES, "25"), FIGS
 )) {
   dir.create(d, showWarnings = FALSE, recursive = TRUE)
 }
@@ -67,21 +77,35 @@ required_packages <- c(
   "readxl",      # import Excel
   "readr",       # import CSV
   "sandwich",    # matrices de variance-covariance robustes en cluster
-  "lmtest"       # coeftest avec SE robustes
+  "lmtest",      # coeftest avec SE robustes
+  "jsonlite"     # manifeste de réplication JSON
 )
 
-for (pkg in required_packages) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    message("Installation du package: ", pkg)
-    install.packages(pkg, repos = "https://cloud.r-project.org")
-  }
-  suppressPackageStartupMessages(
-    library(pkg, character.only = TRUE)
+strict_replication <- identical(Sys.getenv("CEQ_REPLICATION_STRICT"), "1")
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+if (length(missing_packages) > 0L && strict_replication) {
+  stop(
+    "Paquets R absents en mode réplication stricte : ",
+    paste(missing_packages, collapse = ", "),
+    ". Exécuter renv::restore() depuis la racine du dépôt.",
+    call. = FALSE
   )
+}
+for (pkg in missing_packages) {
+  message("Installation du package: ", pkg)
+  install.packages(pkg, repos = "https://cloud.r-project.org")
+}
+for (pkg in required_packages) {
+  suppressPackageStartupMessages(library(pkg, character.only = TRUE))
 }
 
 # ── Charger les fonctions utilitaires ───────────────────────────────────────────────────
 source(file.path(CODE, "utils", "distributive.R"))
 source(file.path(CODE, "utils", "io.R"))
+source(file.path(CODE, "utils", "leontief_vat.R"))
+source(file.path(CODE, "utils", "vat_scenarios.R"))
+source(file.path(CODE, "utils", "tre_mapping.R"))
 
 message("✓ Configuration terminee. Dossier de travail: ", ROOT)

@@ -28,21 +28,21 @@ run_sensitivity_ranking <- function(paths) {
   )
 
 # ── Fusionner les variables de bien-etre ─────────────────────────────────
+  # Les variables pcexp, zref et hhsize sont déjà présentes dans la base de
+  # sensibilité. Ne joindre que les deux échelles d'équivalent-adulte évite la
+  # création silencieuse de colonnes .x/.y lors d'une exécution depuis l'étape 1.
   welfare_data <- load_raw_dta(
     "ehcvm_welfare_2b_CIV2021.dta",
-    col_select = c("hhid", "eqadu1", "eqadu2", "hgender", "hage",
-                   "hmstat", "heduc", "halfa2", "halfa", "hbranch",
-                   "pcexp", "zref", "hhsize")
+    col_select = c("hhid", "eqadu1", "eqadu2")
   )
   assert_required_columns(
     welfare_data,
-    c("hhid", "eqadu1", "eqadu2", "pcexp", "zref", "hhsize"),
+    c("hhid", "eqadu1", "eqadu2"),
     object_name = "ehcvm_welfare_2b_CIV2021.dta"
   )
 
   hh <- hh_sens %>%
     dplyr::left_join(welfare_data, by = "hhid")
-
   # ── Concepts de bien-etre ───────────────────────────────────────────────
   hh <- hh %>%
     dplyr::mutate(

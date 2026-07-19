@@ -1,233 +1,276 @@
-# =============================================================================
-# Étape 14 — Incidence de la TVA enchâssée (I/O) sur la pauvreté
-# Étend l'étape 12 en ajoutant la composante TVA enchâssée via Leontief
+# Etape 14 - Pauvrete apres TVA directe et incorporee.
 #
-# APPROCHE :
-#   pcexp_io = pcexp - (vat_direct + vat_emb) / hhsize
-#
-#   Trois comparaisons par scénario d'informalité (strict / s2 / s3) :
-#     (A) Avant TVA       : pcexp
-#     (B) Après direct    : pcexp - vat_direct / hhsize        [step 12]
-#     (C) Après total I/O : pcexp - (vat_direct + vat_emb) / hhsize  [step 14]
-#
-# INPUT :  SILVER/06/fiscal_sensitivity_taxation.parquet  (vat_strict/s2/s3, decile)
-#          SILVER/13/fiscal_data_io.parquet               (vat_emb)
-#          DATA/ehcvm_welfare_2b_CIV2021.dta              (pcexp, zref, hhsize)
-# OUTPUT : TABLES/14/14_01_fgt_comparison.xlsx
-#          TABLES/14/14_02_fgt_milieu.xlsx
-#          TABLES/14/14_03_fgt_region.xlsx
-#          TABLES/14/14_04_nouveaux_pauvres_io.xlsx
-#          FIGS/fig_poverty_io_impact.png
-# =============================================================================
-library(dplyr); library(tidyr); library(ggplot2)
+# Specification centrale : TRE 2023 courant et informalite par produit-decile
+# (S3). Le TRE constant et ICIO 2020 sont des robustesses. Tous les montants
+# fiscaux nominaux sont convertis dans l'unite reelle de pcexp avec def_spa.
 
 source("05_scripts_R/00_setup.R")
 
 SILVER_14 <- file.path(SILVER, "14")
-dir.create(SILVER_14, showWarnings = FALSE)
-dir.create(file.path(TABLES, "14"), showWarnings = FALSE)
+dir.create(SILVER_14, showWarnings = FALSE, recursive = TRUE)
+dir.create(file.path(TABLES, "14"), showWarnings = FALSE, recursive = TRUE)
 
-# ── 1. CHARGEMENT ─────────────────────────────────────────────────────────────
-hh_sens <- load_parquet(
-  file.path(SILVER, "06", "fiscal_sensitivity_taxation.parquet")
+current <- load_parquet(
+  file.path(SILVER, "13b", "fiscal_data_local_io_current.parquet")
 )
-assert_required_columns(
-  hh_sens,
-  c("hhid", "hhweight", "milieu", "region", "decile", "vat_strict", "vat_s2", "vat_s3"),
-  object_name = "fiscal_sensitivity_taxation.parquet"
+constant <- load_parquet(
+  file.path(SILVER, "13b", "fiscal_data_local_io_constant.parquet")
 )
+oecd <- load_parquet(file.path(SILVER, "13", "fiscal_data_io.parquet"))
 
-hh_io <- load_parquet(
-  file.path(SILVER, "13", "fiscal_data_io.parquet")
-) %>% select(hhid, vat_emb)
-assert_required_columns(
-  hh_io,
-  c("hhid", "vat_emb"),
-  object_name = "fiscal_data_io.parquet"
+required_base <- c(
+  "hhid", "hhweight", "pcweight", "grappe", "strata", "region",
+  "milieu", "decile", "yd_pc", "hhsize", "zref"
 )
+assert_required_columns(current, required_base, "TRE courant")
 
-welfare <- load_raw_dta(
-  "ehcvm_welfare_2b_CIV2021.dta",
-  col_select = c("hhid", "pcexp", "zref", "hhsize")
-)
-
-# ── 2. JOINTURE ET CONCEPTS DE BIEN-ÊTRE ─────────────────────────────────────
-hh <- hh_sens %>%
-  left_join(hh_io,   by = "hhid") %>%
-  left_join(welfare, by = "hhid") %>%
-  mutate(vat_emb = replace_na(vat_emb, 0)) %>%
-  filter(!is.na(pcexp), !is.na(zref), !is.na(hhsize), hhsize > 0) %>%
-  mutate(w_ind = hhweight * hhsize)
-
-n_miss <- nrow(hh_sens) - nrow(hh)
-if (n_miss > 0)
-  warning(sprintf("%d ménages exclus (pcexp/zref/hhsize manquants)", n_miss))
-
-hh <- hh %>%
-  mutate(
-    # (A) Avant TVA
-    pcexp_pre         = pcexp,
-    # (B) Après TVA directe seulement
-    pcexp_direct_s1   = pcexp - vat_strict / hhsize,
-    pcexp_direct_s2   = pcexp - vat_s2     / hhsize,
-    pcexp_direct_s3   = pcexp - vat_s3     / hhsize,
-    # (C) Après TVA totale (directe + enchâssée I/O)
-    pcexp_io_s1       = pcexp - (vat_strict + vat_emb) / hhsize,
-    pcexp_io_s2       = pcexp - (vat_s2     + vat_emb) / hhsize,
-    pcexp_io_s3       = pcexp - (vat_s3     + vat_emb) / hhsize
-  )
-
-# ── 3. FONCTION FGT ───────────────────────────────────────────────────────────
-fgt <- function(y, z, w, alpha) {
-  gap <- pmax(0, 1 - y / z)
-  if (alpha == 0L) weighted.mean(gap > 0, w, na.rm = TRUE)
-  else             weighted.mean(gap^alpha, w, na.rm = TRUE)
-}
-
-welfare_vars <- c(
-  "pcexp_pre",
-  "pcexp_direct_s1", "pcexp_direct_s2", "pcexp_direct_s3",
-  "pcexp_io_s1",     "pcexp_io_s2",     "pcexp_io_s3"
-)
-welfare_labels <- c(
-  "pcexp_pre"       = "Avant TVA",
-  "pcexp_direct_s1" = "Direct — Strict",
-  "pcexp_direct_s2" = "Direct — S2 (CEI x milieu)",
-  "pcexp_direct_s3" = "Direct — S3 (CEI x décile)",
-  "pcexp_io_s1"     = "Total I/O — Strict",
-  "pcexp_io_s2"     = "Total I/O — S2 (CEI x milieu)",
-  "pcexp_io_s3"     = "Total I/O — S3 (CEI x décile)"
-)
-
-compute_fgt_table <- function(data, group_var = NULL) {
-  p0_ref <- fgt(data$pcexp_pre, data$zref, data$hhweight, 0)
-  purrr::map_dfr(welfare_vars, function(wv) {
-    fn <- function(df) {
-      p0_base <- fgt(df$pcexp_pre, df$zref, df$w_ind, 0)
-      tibble(
-        concept  = welfare_labels[[wv]],
-        p0       = fgt(df[[wv]], df$zref, df$w_ind, 0),
-        p1       = fgt(df[[wv]], df$zref, df$w_ind, 1),
-        p2       = fgt(df[[wv]], df$zref, df$w_ind, 2),
-        delta_p0 = fgt(df[[wv]], df$zref, df$w_ind, 0) - p0_base
-      )
-    }
-    if (is.null(group_var)) fn(data)
-    else {
-      data %>%
-        group_by(across(all_of(group_var))) %>%
-        group_modify(~fn(.x)) %>%
-        ungroup()
-    }
-  })
-}
-
-# ── 4. TABLES FGT ─────────────────────────────────────────────────────────────
-fgt_national <- compute_fgt_table(hh)
-message("\n=== FGT national — comparaison direct vs total I/O ===")
-print(fgt_national %>% select(concept, p0, p1, p2, delta_p0))
-export_excel(fgt_national, file.path(TABLES, "14", "14_01_fgt_comparison.xlsx"))
-
-fgt_milieu <- compute_fgt_table(hh, "milieu")
-export_excel(fgt_milieu,   file.path(TABLES, "14", "14_02_fgt_milieu.xlsx"))
-
-fgt_region <- compute_fgt_table(hh, "region")
-export_excel(fgt_region,   file.path(TABLES, "14", "14_03_fgt_region.xlsx"))
-
-# ── 5. NOUVEAUX PAUVRES — COMPOSANTE I/O ──────────────────────────────────────
-hh <- hh %>%
-  mutate(
-    poor_pre          = pcexp_pre      < zref,
-    poor_direct_s1    = pcexp_direct_s1 < zref,
-    poor_direct_s2    = pcexp_direct_s2 < zref,
-    poor_direct_s3    = pcexp_direct_s3 < zref,
-    poor_io_s1        = pcexp_io_s1    < zref,
-    poor_io_s2        = pcexp_io_s2    < zref,
-    poor_io_s3        = pcexp_io_s3    < zref,
-    # Nouveaux pauvres générés par le seul enchâssement I/O
-    # (non pauvres après direct, mais pauvres après total)
-    np_io_s1 = (!poor_direct_s1) & poor_io_s1,
-    np_io_s2 = (!poor_direct_s2) & poor_io_s2,
-    np_io_s3 = (!poor_direct_s3) & poor_io_s3
-  )
-
-np_by_decile <- hh %>%
-  group_by(decile) %>%
-  summarise(
-    p0_pre         = weighted.mean(poor_pre,       hhweight),
-    p0_direct_s1   = weighted.mean(poor_direct_s1, hhweight),
-    p0_io_s1       = weighted.mean(poor_io_s1,     hhweight),
-    delta_io_s1    = weighted.mean(poor_io_s1,     hhweight) -
-                     weighted.mean(poor_direct_s1, hhweight),
-    np_io_s1_pond  = sum(np_io_s1 * hhweight, na.rm = TRUE),
-    np_io_s2_pond  = sum(np_io_s2 * hhweight, na.rm = TRUE),
-    np_io_s3_pond  = sum(np_io_s3 * hhweight, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-total_np <- np_by_decile %>%
-  summarise(across(starts_with("np_"), sum))
-
-message("\n=== Nouveaux pauvres générés par la seule composante enchâssée I/O ===")
-message(sprintf("  Strict  : %s ménages",
-  format(round(total_np$np_io_s1_pond), big.mark = ",")))
-message(sprintf("  S2      : %s ménages",
-  format(round(total_np$np_io_s2_pond), big.mark = ",")))
-message(sprintf("  S3      : %s ménages",
-  format(round(total_np$np_io_s3_pond), big.mark = ",")))
-
-export_excel(np_by_decile,
-             file.path(TABLES, "14", "14_04_nouveaux_pauvres_io.xlsx"))
-
-# ── 6. FIGURE — ΔP0 par décile : direct vs total I/O (scénario strict) ───────
-fig_data <- hh %>%
-  group_by(decile) %>%
-  summarise(
-    delta_direct = weighted.mean(poor_direct_s1, hhweight) -
-                   weighted.mean(poor_pre,        hhweight),
-    delta_io     = weighted.mean(poor_io_s1,     hhweight) -
-                   weighted.mean(poor_pre,        hhweight),
-    delta_emb    = delta_io - delta_direct,
-    .groups = "drop"
+constant_tax <- constant %>%
+  select(
+    hhid,
+    starts_with("vat_direct_local_"),
+    starts_with("vat_emb_local_"),
+    starts_with("vat_total_local_")
   ) %>%
-  pivot_longer(cols = c(delta_direct, delta_emb),
-               names_to = "composante", values_to = "delta_p0") %>%
-  mutate(composante = case_when(
-    composante == "delta_direct" ~ "TVA directe",
-    composante == "delta_emb"    ~ "TVA enchâssée (I/O)"
-  ))
+  rename_with(~ paste0(.x, "_constant"), -hhid)
 
-fig <- ggplot(fig_data,
-    aes(x = factor(decile), y = delta_p0 * 100, fill = composante)) +
-  geom_col(position = "stack", width = 0.75) +
+oecd_tax <- oecd %>%
+  select(
+    hhid,
+    starts_with("vat_direct_io_"),
+    starts_with("vat_emb_io_"),
+    starts_with("vat_total_io_")
+  ) %>%
+  rename_with(~ paste0(.x, "_oecd"), -hhid)
+
+hh <- current %>%
+  left_join(constant_tax, by = "hhid") %>%
+  left_join(oecd_tax, by = "hhid")
+
+concepts <- tribble(
+  ~concept_id, ~matrix, ~scenario, ~component, ~tax_var,
+  "yd", "Aucune", "reference", "avant TVA", NA_character_,
+  "cur_direct_strict", "TRE courant", "strict", "directe",
+  "vat_direct_local_strict_real",
+  "cur_direct_s2", "TRE courant", "S2", "directe",
+  "vat_direct_local_s2_real",
+  "cur_direct_s3", "TRE courant", "S3", "directe",
+  "vat_direct_local_s3_real",
+  "cur_total_strict", "TRE courant", "strict", "directe + incorporee",
+  "vat_total_local_strict_real",
+  "cur_total_s2", "TRE courant", "S2", "directe + incorporee",
+  "vat_total_local_s2_real",
+  "cur_total_s3", "TRE courant", "S3", "directe + incorporee",
+  "vat_total_local_s3_real",
+  "const_total_strict", "TRE constant", "strict", "directe + incorporee",
+  "vat_total_local_strict_real_constant",
+  "const_total_s2", "TRE constant", "S2", "directe + incorporee",
+  "vat_total_local_s2_real_constant",
+  "const_total_s3", "TRE constant", "S3", "directe + incorporee",
+  "vat_total_local_s3_real_constant",
+  "oecd_total_strict", "ICIO 2020", "strict", "directe + incorporee",
+  "vat_total_io_strict_real_oecd",
+  "oecd_total_s2", "ICIO 2020", "S2", "directe + incorporee",
+  "vat_total_io_s2_real_oecd",
+  "oecd_total_s3", "ICIO 2020", "S3", "directe + incorporee",
+  "vat_total_io_s3_real_oecd"
+)
+
+missing_tax <- setdiff(na.omit(concepts$tax_var), names(hh))
+if (length(missing_tax) > 0) {
+  stop("Variables fiscales manquantes: ", paste(missing_tax, collapse = ", "),
+       call. = FALSE)
+}
+
+welfare_after_tax <- function(data, tax_var) {
+  if (is.na(tax_var)) return(data$yd_pc)
+  data$yd_pc - data[[tax_var]] / data$hhsize
+}
+
+point_fgt <- purrr::pmap_dfr(concepts, function(
+    concept_id, matrix, scenario, component, tax_var) {
+  welfare <- welfare_after_tax(hh, tax_var)
+  tibble(
+    concept_id = concept_id,
+    matrix = matrix,
+    scenario = scenario,
+    component = component,
+    p0 = fgt_index(welfare, hh$zref, hh$pcweight, 0),
+    p1 = fgt_index(welfare, hh$zref, hh$pcweight, 1),
+    p2 = fgt_index(welfare, hh$zref, hh$pcweight, 2)
+  )
+})
+
+base_point <- point_fgt %>% filter(concept_id == "yd")
+point_fgt <- point_fgt %>%
+  mutate(
+    delta_p0 = p0 - base_point$p0,
+    delta_p1 = p1 - base_point$p1,
+    delta_p2 = p2 - base_point$p2
+  )
+
+# Bootstrap Rao-Wu conjoint : une meme replication sert a tous les concepts.
+set.seed(20240901)
+bootstrap_reps <- 500L
+bootstrap_array <- replicate(bootstrap_reps, {
+  replicate_weight <- rao_wu_weights(
+    hh, "pcweight", "grappe", "strata"
+  )
+  unlist(lapply(concepts$tax_var, function(tax_var) {
+    welfare <- welfare_after_tax(hh, tax_var)
+    c(
+      p0 = fgt_index(welfare, hh$zref, replicate_weight, 0),
+      p1 = fgt_index(welfare, hh$zref, replicate_weight, 1),
+      p2 = fgt_index(welfare, hh$zref, replicate_weight, 2)
+    )
+  }))
+})
+
+stat_names <- unlist(lapply(concepts$concept_id, function(id) {
+  paste(id, c("p0", "p1", "p2"), sep = "__")
+}))
+rownames(bootstrap_array) <- stat_names
+
+bootstrap_ci <- purrr::map_dfr(seq_len(nrow(concepts)), function(i) {
+  rows <- (3 * i - 2):(3 * i)
+  base_rows <- 1:3
+  value <- bootstrap_array[rows, , drop = FALSE]
+  delta <- value - bootstrap_array[base_rows, , drop = FALSE]
+  tibble(
+    concept_id = concepts$concept_id[i],
+    p0_lo = quantile(value[1, ], 0.025, na.rm = TRUE),
+    p0_hi = quantile(value[1, ], 0.975, na.rm = TRUE),
+    p1_lo = quantile(value[2, ], 0.025, na.rm = TRUE),
+    p1_hi = quantile(value[2, ], 0.975, na.rm = TRUE),
+    p2_lo = quantile(value[3, ], 0.025, na.rm = TRUE),
+    p2_hi = quantile(value[3, ], 0.975, na.rm = TRUE),
+    delta_p0_lo = quantile(delta[1, ], 0.025, na.rm = TRUE),
+    delta_p0_hi = quantile(delta[1, ], 0.975, na.rm = TRUE),
+    delta_p1_lo = quantile(delta[2, ], 0.025, na.rm = TRUE),
+    delta_p1_hi = quantile(delta[2, ], 0.975, na.rm = TRUE),
+    delta_p2_lo = quantile(delta[3, ], 0.025, na.rm = TRUE),
+    delta_p2_hi = quantile(delta[3, ], 0.975, na.rm = TRUE)
+  )
+})
+
+fgt_results <- point_fgt %>%
+  left_join(bootstrap_ci, by = "concept_id")
+
+matrix_difference <- tibble(
+  comparaison = c("TRE courant - ICIO", "TRE constant - TRE courant"),
+  scenario = "S3",
+  delta_p0 = c(
+    point_fgt$p0[point_fgt$concept_id == "cur_total_s3"] -
+      point_fgt$p0[point_fgt$concept_id == "oecd_total_s3"],
+    point_fgt$p0[point_fgt$concept_id == "const_total_s3"] -
+      point_fgt$p0[point_fgt$concept_id == "cur_total_s3"]
+  ),
+  lo_95 = c(
+    quantile(
+      bootstrap_array["cur_total_s3__p0", ] -
+        bootstrap_array["oecd_total_s3__p0", ],
+      0.025
+    ),
+    quantile(
+      bootstrap_array["const_total_s3__p0", ] -
+        bootstrap_array["cur_total_s3__p0", ],
+      0.025
+    )
+  ),
+  hi_95 = c(
+    quantile(
+      bootstrap_array["cur_total_s3__p0", ] -
+        bootstrap_array["oecd_total_s3__p0", ],
+      0.975
+    ),
+    quantile(
+      bootstrap_array["const_total_s3__p0", ] -
+        bootstrap_array["cur_total_s3__p0", ],
+      0.975
+    )
+  )
+)
+
+# Nouveaux pauvres dans la specification centrale, en menages et en personnes.
+central_welfare <- welfare_after_tax(hh, "vat_total_local_s3_real")
+new_poor <- hh$yd_pc >= hh$zref & central_welfare < hh$zref
+new_poor_summary <- tibble(
+  specification = "TRE courant, S3",
+  menages_ponderes = sum(hh$hhweight[new_poor], na.rm = TRUE),
+  personnes_ponderees = sum(hh$pcweight[new_poor], na.rm = TRUE),
+  part_nouveaux_pauvres_ruraux = weighted.mean(
+    as.character(hh$milieu[new_poor]) %in% c("2", "Rural", "rural"),
+    hh$pcweight[new_poor],
+    na.rm = TRUE
+  )
+)
+
+print(fgt_results %>%
+        select(matrix, scenario, component, p0, delta_p0,
+               delta_p0_lo, delta_p0_hi))
+print(matrix_difference)
+print(new_poor_summary)
+
+export_excel(
+  fgt_results,
+  file.path(TABLES, "14", "14_01_fgt_comparison.xlsx")
+)
+export_excel(
+  matrix_difference,
+  file.path(TABLES, "14", "14_02_matrix_robustness.xlsx")
+)
+export_excel(
+  new_poor_summary,
+  file.path(TABLES, "14", "14_03_new_poor_central.xlsx")
+)
+
+figure_data <- fgt_results %>%
+  filter(matrix == "TRE courant", component != "avant TVA") %>%
+  mutate(
+    composante = ifelse(component == "directe", "TVA directe",
+                        "TVA directe + incorporee"),
+    scenario = factor(scenario, levels = c("S3", "S2", "strict"))
+  )
+
+fig <- ggplot(
+  figure_data,
+  aes(x = scenario, y = delta_p0 * 100, fill = composante)
+) +
+  geom_col(position = "dodge", width = 0.72) +
+  geom_errorbar(
+    aes(ymin = delta_p0_lo * 100, ymax = delta_p0_hi * 100),
+    position = position_dodge(width = 0.72), width = 0.16
+  ) +
   scale_fill_manual(values = c(
-    "TVA directe"        = "steelblue",
-    "TVA enchâssée (I/O)"= "firebrick"
+    "TVA directe" = "steelblue",
+    "TVA directe + incorporee" = "firebrick"
   )) +
   labs(
-    title    = "Impact de la TVA sur le taux de pauvreté par décile",
-    subtitle = "Scénario strict — Côte d'Ivoire, EHCVM 2021",
-    x        = "Décile de consommation (D1 = plus pauvre)",
-    y        = "\u0394 P0 (points de %)",
-    fill     = "Composante",
-    caption  = paste0(
-      "Pondérations sondage. Seuil ménage-spécifique (zref, EHCVM).\n",
-      "TVA enchâssée = impact marginal de la TVA sur intrants intermédiaires (Leontief, ICIO 2020)."
+    title = "Effet de la TVA sur la pauvrete",
+    subtitle = "TRE 2023 courant; intervalles Rao-Wu a 95 %",
+    x = "Hypothese de formalite des achats",
+    y = "Variation de P0 (points de pourcentage)",
+    fill = NULL,
+    caption = paste0(
+      "S3 (central) : formalite par produit et decile; S2 : produit et milieu; ",
+      "strict : transmission complete."
     )
   ) +
   theme_minimal(base_size = 11) +
-  theme(legend.position = "bottom",
-        plot.caption    = element_text(size = 7))
+  theme(legend.position = "bottom")
 
 export_fig(fig, file.path(FIGS, "fig_poverty_io_impact.png"))
 
-# ── 7. SAUVEGARDE PARQUET ─────────────────────────────────────────────────────
 save_parquet(
-  hh %>% select(hhid, hhweight, milieu, region, decile,
-                pcexp_pre, pcexp_direct_s1, pcexp_io_s1,
-                poor_pre, poor_direct_s1, poor_io_s1,
-                np_io_s1, np_io_s2, np_io_s3),
+  hh %>%
+    transmute(
+      hhid, hhweight, pcweight, grappe, strata, region, milieu, decile,
+      yd_pc, zref, hhsize,
+      yc_pc_tre_s3 = central_welfare,
+      poor_yd = yd_pc < zref,
+      poor_yc_tre_s3 = central_welfare < zref,
+      new_poor_tre_s3 = new_poor
+    ),
   file.path(SILVER_14, "poverty_io.parquet")
 )
 
-message("\nÉtape 14 terminée — outputs dans ", SILVER_14, " et ", file.path(TABLES, "14"))
+message("Etape 14 terminee - inference Rao-Wu et robustesses I/O")

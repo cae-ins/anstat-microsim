@@ -1,0 +1,21 @@
+{
+  "project": "Incidence distributive du système fiscal en Côte d’Ivoire — EHCVM 2021",
+  "entrypoint": "replication_package/code/00_run_all.R",
+  "preflight": "replication_package/code/00_preflight.R",
+  "verification": "replication_package/code/01_verify_outputs.R",
+  "working_directory": "repository_root",
+  "reference_r_version": "4.5.3",
+  "pipeline_steps": [1, 26],
+  "restricted_data_manifest": "replication_package/data/data_manifest.csv",
+  "expected_report": "replication_package/output/verification_report.csv",
+  "success_condition": "process_exit_code == 0 and verification_failures == 0",
+  "privacy": {
+    "upload_microdata": false,
+    "modify_source_data": false,
+    "substitute_missing_inputs": false
+  },
+  "commands": [
+    "Rscript replication_package/code/00_preflight.R",
+    "Rscript replication_package/code/00_run_all.R"
+  ]
+}

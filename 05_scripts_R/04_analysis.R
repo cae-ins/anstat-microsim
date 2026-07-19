@@ -31,8 +31,9 @@ run_analysis <- function(paths) {
   # ── Classement des menages ───────────────────────────────────────────────
   hh <- hh %>%
     dplyr::mutate(
-      decile   = weighted_ntile(conso_w, hhweight, n = 10),
-      quintile = weighted_ntile(conso_w, hhweight, n = 5)
+      decile   = weighted_ntile(yd_pc, pcweight, n = 10),
+      quintile = weighted_ntile(yd_pc, pcweight, n = 5),
+      eff_vat_welfare = vat_w_real / yd_hh
     )
 
   # ── Resultats par decile ─────────────────────────────────────────────────

@@ -1,0 +1,21 @@
+path,role,required,redistributed,access,md5,bytes,source_or_owner,licence
+01_data_sources/Dataout/ehcvm_conso_CIV2021.dta,consommation harmonisée,TRUE,FALSE,condition d'accès EHCVM,e2cba441599987826e8cb5ed5b208f74,23652697,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Dataout/ehcvm_individu_CIV2021.dta,individus harmonisés,TRUE,FALSE,condition d'accès EHCVM,a12c95e5b7d8ca599d7d05e6db5b20b0,5223439,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Dataout/ehcvm_welfare_2b_CIV2021.dta,bien-être harmonisé,TRUE,FALSE,condition d'accès EHCVM,edd4ca5bcb05816025e5d483f9b88855,1154014,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Datain/Menage/s02_me_CIV2021.dta,éducation,TRUE,FALSE,condition d'accès EHCVM,a6db7708aa1cd60aa1c4ee6fc26c7f54,60566650,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Datain/Menage/s03_me_CIV2021.dta,santé,TRUE,FALSE,condition d'accès EHCVM,4eaae5d99e2a65fe604a600b7bed7dd6,77528142,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Datain/Menage/s04_me_CIV2021.dta,emploi principal,TRUE,FALSE,condition d'accès EHCVM,3fde2734f9524658cd5ab22ba2d53b71,121198989,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Datain/Menage/s05_me_CIV2021.dta,emploi secondaire,TRUE,FALSE,condition d'accès EHCVM,685ec9efaf49e7ebe9b116c85700aceb,6148654,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Datain/Menage/s11_me_CIV2021.dta,pensions et prestations,TRUE,FALSE,condition d'accès EHCVM,c39e201ac613e0b72e264c4cda5583dc,25250819,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Datain/Menage/s13a_2_me_CIV2021.dta,transferts privés,TRUE,FALSE,condition d'accès EHCVM,353c83e8e693f97cca9b77915d183173,8759990,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/Datain/Menage/s15_me_CIV2021.dta,filets sociaux déclarés,TRUE,FALSE,condition d'accès EHCVM,52a0e5a965f6eaea7fe5da66796ef136,121713931,ANStat EHCVM,conditions du catalogue EHCVM
+01_data_sources/COPR_EHCVM_TVA_renseigne.xlsx,correspondance produits et TVA,TRUE,FALSE,MinIO interne prévu,c48430437b5f72c1213c849b326c79ce,66389,équipe de recherche,à approuver
+01_data_sources/concordance_codpr_ICIO.csv,concordance ICIO,TRUE,FALSE,MinIO interne prévu,cf1516c3cd8b7a39e944df1274901130,17856,équipe de recherche,à approuver
+01_data_sources/params_indirect_other_2021.xlsx,accises et droits de douane,TRUE,FALSE,MinIO interne prévu,31398dee35c5db4d54e6d75f89ff354c,40048,équipe de recherche à partir de sources publiques,à approuver
+01_data_sources/params_transfers_2021.xlsx,pensions et transferts,TRUE,FALSE,MinIO interne prévu,d0e4606d7df69cdc8d8372d4064b3400,16052,équipe de recherche à partir de sources publiques,à approuver
+01_data_sources/params_subsidies_2021.xlsx,réductions de prix,TRUE,FALSE,MinIO interne prévu,d2827e4e071244b064b0a4dd8b1ff36e,15383,équipe de recherche à partir de sources publiques,à approuver
+01_data_sources/params_education_2021.xlsx,budget éducation,TRUE,FALSE,MinIO interne prévu,f84fa3dbf24523a9a36de22bd623fc98,10759,équipe de recherche à partir de sources publiques,à approuver
+01_data_sources/params_health_2021.xlsx,budget santé,TRUE,FALSE,MinIO interne prévu,7f5c500d427d62cbaf5b712e9d0a0891,10732,équipe de recherche à partir de sources publiques,à approuver
+01_data_sources/IO/CIV2020ttl.csv,matrice ICIO 2020,TRUE,FALSE,licence du producteur,acb8afb995c132e71b84e060ce3a954e,11282,base internationale ICIO,conditions du producteur
+01_data_sources/IO/TRE_COURANT_2023.XLS,TRE courant 2023,TRUE,FALSE,publication ANStat,e04f89ef233f4cf551af0e288d7831fb,103424,ANStat,conditions ANStat
+01_data_sources/IO/TRE_CONSTANT_2023.XLS,TRE constant 2023,TRUE,FALSE,publication ANStat,f83d4308437c726125241da97a0fd0f7,103424,ANStat,conditions ANStat
