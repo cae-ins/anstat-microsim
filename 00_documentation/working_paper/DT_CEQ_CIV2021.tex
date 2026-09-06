@@ -1145,13 +1145,16 @@ registre, ni comportements d'offre, ni délai de paiement.
 
 \subsection{TVA directe : une charge croissante avec le niveau de vie}
 
-Le tableau~\ref{tab:vat-scenarios} rassemble les trois hypothèses de taxation
+Le tableau~\ref{tab:vat-scenarios} rassemble les quatre hypothèses de taxation
 effective. Sous l'hypothèse conditionnelle S3, la TVA directe simulée atteint 697
 milliards de FCFA. Le taux effectif moyen passe de 2,01~\% du revenu disponible
 au premier décile à 6,13~\% au dixième. Cette pente combine la composition des
 paniers et l'augmentation de la probabilité d'achat formel avec le niveau de
 vie. Le Kakwani vaut $0,165$ et son intervalle à 95~\%, $[0,157;0,173]$, exclut
-nettement zéro.
+nettement zéro. Le scénario S4, qui place $\alpha$ à la borne d'offre déduite du
+module des entreprises non agricoles, y remplace la borne haute purement
+théorique de S1 par une borne ancrée sur une source nationale : la masse revient
+de 1~398 à 860 milliards et le Kakwani de $0,076$ à $0,104$.
 
 \begin{table}[t]
 \centering
@@ -1166,12 +1169,16 @@ Hypothèse & Masse & Kakwani & IC à 95~\% & $RS$ \\
 S1 : transmission intégrale & 1~398 & 0,076 & [0,067 ; 0,084] & $0,0069$ \\
 S2 : COICOP $\times$ milieu &   744 & 0,132 & [0,123 ; 0,140] & $0,0064$ \\
 S3 : COICOP $\times$ décile &   697 & 0,165 & [0,157 ; 0,173] & $0,0076$ \\
+S4 : borne d'offre ivoirienne &   860 & 0,104 & [0,096 ; 0,112] & $0,0059$ \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}\footnotesize
 \item \emph{Notes} : masses issues du TRE courant afin de conserver la même
 décomposition TTC que le modèle I/O. Kakwani et Reynolds--Smolensky utilisent
 $Y_D$ comme revenu de classement. Intervalles Rao--Wu, 500 réplications.
+S4 fixe $\alpha$ à la borne supérieure déduite de l'offre des entreprises non
+immatriculées du module~10 là où celle-ci est exploitable, et conserve le
+coefficient de S3 ailleurs (annexe~\ref{annexe:ancrage}).
 Source : calculs des auteurs à partir de l'EHCVM 2021.
 \end{tablenotes}
 \end{threeparttable}
@@ -1227,10 +1234,14 @@ Sous S3, la TVA directe fait passer $P_0$ de 37,47 à 39,82~\%, soit
 $+2,35$ points avec un intervalle $[1,89;2,87]$. L'ajout de la TVA enchâssée
 porte $P_0$ à 41,01~\%, soit $+3,54$ points $[3,02;4,10]$. Le même mécanisme
 apparaît sous S2 et sous S1 : l'augmentation atteint respectivement 3,96 et
-7,07 points. Le signe de l'appauvrissement est donc robuste aux trois scénarios;
+7,07 points. Le signe de l'appauvrissement est donc robuste aux quatre scénarios;
 son amplitude reste conditionnelle aux paramètres non identifiés de taxation
 effective. S2 fournit une robustesse paramétrique et S1 une borne haute, non les
-bornes d'un intervalle statistique autour de S3.
+bornes d'un intervalle statistique autour de S3. Sous S4, où $\alpha$ est porté à
+la borne d'offre ivoirienne, l'augmentation vaut 3,55 points pour la seule TVA
+directe et 4,50 points une fois la TVA enchâssée ajoutée : la borne haute de
+l'appauvrissement, ancrée sur une source nationale, se situe ainsi à un peu plus
+de la moitié de celle qu'impliquait la transmission intégrale de S1.
 
 \begin{table}[t]
 \centering
@@ -1245,13 +1256,17 @@ Référence & $Y_D$, avant TVA & 37,47 & 0,00 & -- \\
 S3 & TVA directe & 39,82 & 2,35 & [1,89 ; 2,87] \\
 S3 & TVA directe + enchâssée & 41,01 & 3,54 & [3,02 ; 4,10] \\
 S2 & TVA directe + enchâssée & 41,43 & 3,96 & [3,38 ; 4,58] \\
+S4 & TVA directe & 41,02 & 3,55 & [3,03 ; 4,08] \\
+S4 & TVA directe + enchâssée & 41,97 & 4,50 & [3,90 ; 5,12] \\
 S1 & TVA directe + enchâssée & 44,54 & 7,07 & [6,39 ; 7,77] \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}\footnotesize
 \item \emph{Notes} : TRE 2023 courant. Les poids de population multiplient le
 poids du ménage par le nombre de ses membres. Le seuil national de pauvreté de
-l'EHCVM 2021 est de 369~516 FCFA par personne et par an.
+l'EHCVM 2021 est de 369~516 FCFA par personne et par an. S4 place $\alpha$ à la
+borne d'offre ivoirienne et remplace S1 comme borne haute de référence de
+l'étude (annexe~\ref{annexe:ancrage}).
 Intervalles Rao--Wu, 500 réplications conjointes. Source : calculs des auteurs à partir de l'EHCVM 2021.
 \end{tablenotes}
 \end{threeparttable}
@@ -2536,7 +2551,10 @@ de TVA compatible avec les données ivoiriennes. Il resserre sensiblement la bor
 haute : la TVA directe accroît alors la pauvreté de 3,52 points, contre 6,10
 points sous la transmission intégrale de S1 et 2,17 points sous S3. La borne
 purement théorique de S1 est donc remplacée par une borne ancrée sur une source
-nationale, plus basse de près de moitié.
+nationale, plus basse de près de moitié. Ce scénario est porté jusqu'au bout de
+la chaîne, TVA enchâssée comprise : les tableaux~\ref{tab:vat-scenarios}
+et~\ref{tab:fgt-io} en publient la masse, la progressivité et l'effet sur la
+pauvreté aux côtés de S1, S2 et S3.
 
 \subsection{Ancrage de pente par les valeurs unitaires}
 
@@ -2554,22 +2572,33 @@ par produit, unité, conditionnement et région, nous mesurons le prix unitaire 
 écart à la moyenne de la cellule, puis nous régressons cet écart sur le rang de
 décile, en distinguant les produits soumis à la taxe et les produits exonérés ou
 hors champ. Les produits non taxés forment le groupe de contrôle : leur pente
-capte la montée en gamme et les remises sur quantité, qui n'ont rien à voir avec
-la fiscalité. La différence des deux pentes isole ce qui est imputable au circuit
-taxé. Les deux groupes partageant les mêmes grappes, l'estimation est conduite
-dans un modèle unique avec interaction et erreurs types agrégées au niveau de la
-grappe.
+capte la montée en gamme, qui n'a rien à voir avec la fiscalité. La différence
+des deux pentes isole ce qui est imputable au circuit taxé. Les deux groupes
+partageant les mêmes grappes, l'estimation est conduite dans un modèle unique
+avec interaction et erreurs types agrégées au niveau de la grappe. La quantité
+achetée en une seule fois entre comme régresseur, en logarithme et sous la même
+transformation intra-cellule que le prix : un ménage aisé qui achète en plus
+grand conditionnement obtient un prix unitaire plus bas par simple remise de
+gros, effet étranger au statut fiscal du vendeur qu'il faut retirer de la pente
+avant de l'interpréter.
 
 L'exercice est faisable : l'estimation mobilise 219~176 achats alimentaires
 répartis en 2~563 cellules exploitables, dont 1~111 portent sur des produits
-taxés et 1~452 sur des produits non taxés. Le
-prix unitaire relatif croît de 0,85~\% par décile sur les produits non taxés,
-confirmant une montée en gamme réelle à produit et unité donnés. Sur les produits
-taxés, la pente est plus faible : la différence vaut $-0,29$~\% par décile
-(erreur type 0,12, $p = 0{,}012$). Or le coefficient alimentaire de S3, dont la
-pente vaut 0,034 par décile, implique une pente de prix de $+0,55$~\%. Cette
-valeur se situe nettement en dehors de l'intervalle de confiance à 95~\% de la
-pente observée, qui va de $-0,52$ à $-0,06$~\%.
+taxés et 1~452 sur des produits non taxés. La remise de gros est bien présente et
+loin d'être négligeable : à l'intérieur d'une cellule, l'élasticité du prix
+unitaire à la quantité achetée vaut $-0,158$ (erreur type 0,004), de sorte qu'un
+achat deux fois plus volumineux se paie environ 10~\% moins cher à l'unité. Une
+fois ce canal neutralisé, le prix unitaire relatif croît de 0,84~\% par décile sur les produits
+non taxés, ce qui confirme une montée en gamme réelle à produit, unité et
+quantité donnés. Sur les produits taxés, la pente est plus faible : la différence
+vaut $-0,28$~\% par décile (erreur type 0,12, $p = 0{,}015$). Or le coefficient
+alimentaire de S3, dont la pente vaut 0,034 par décile, implique une pente de
+prix de $+0,55$~\%. Cette valeur se situe nettement en dehors de l'intervalle de
+confiance à 95~\% de la pente observée, qui va de $-0,51$ à $-0,05$~\%. La
+spécification brute, qui laisse la quantité hors du modèle, donne une différence
+de $-0,29$~\% (erreur type 0,12, $p = 0{,}012$) et un intervalle de $-0,52$ à
+$-0,06$~\% : le contrôle déplace donc à peine la pente comparée, parce qu'il
+absorbe une remise de gros commune aux deux groupes de produits.
 
 Trois réserves encadrent ce résultat. Il ne porte que sur l'alimentation, seule
 fonction dont les quantités sont enregistrées. Les valeurs unitaires confondent

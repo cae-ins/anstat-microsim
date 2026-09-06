@@ -50,3 +50,28 @@ vat_alpha_decile <- function(coicop, decile) {
   alpha <- pmin(alpha, 1)
   replace(alpha, is.na(alpha), 0)
 }
+
+# Scenario S4 : borne d'offre ancrée sur le module 10 de l'EHCVM. Contrairement
+# aux trois précédents, son profil alpha n'est pas paramétrique mais estimé à
+# l'étape 6.1 (utils/informality_anchor.R) puis persisté, faute de quoi la
+# chaîne de TVA enchâssée devrait relire le module des entreprises.
+vat_alpha_s4_table <- function(silver = SILVER) {
+  chemin <- file.path(silver, "06", "vat_alpha_s4.parquet")
+  if (!file.exists(chemin)) {
+    stop(
+      "Table alpha du scénario S4 absente (", chemin,
+      "). Exécuter l'étape 6 avant les étapes 14 et 15.",
+      call. = FALSE
+    )
+  }
+  load_parquet(chemin)
+}
+
+vat_alpha_s4 <- function(coicop, decile, table = vat_alpha_s4_table()) {
+  cle <- paste(as.integer(as.character(coicop)), as.integer(decile), sep = "_")
+  reference <- paste(as.integer(table$coicop_num), as.integer(table$decile),
+                     sep = "_")
+  alpha <- table$alpha_4[match(cle, reference)]
+  alpha <- pmin(pmax(alpha, 0), 1)
+  replace(alpha, is.na(alpha), 0)
+}

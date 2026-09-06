@@ -221,6 +221,9 @@ fiscal <- load_parquet(
 conso_with_rates <- conso %>%
   left_join(item_rates, by = "codpr")
 
+# Profil alpha du scenario S4, produit par l'etape 6 a partir du module 10.
+alpha_s4_table <- vat_alpha_s4_table(SILVER)
+
 national_embedded_mean <- with(
   dplyr::filter(conso_with_rates, !is.na(embedded_rate)),
   stats::weighted.mean(embedded_rate, depan_w * hhweight, na.rm = TRUE)
@@ -250,6 +253,7 @@ conso_local <- conso_with_rates %>%
     alpha_strict = 1,
     alpha_s2 = vat_alpha_milieu(coicop, milieu),
     alpha_s3 = vat_alpha_decile(coicop, decile),
+    alpha_s4 = vat_alpha_s4(coicop, decile, alpha_s4_table),
     alpha_s3_low = pmax(0, 0.8 * alpha_s3),
     alpha_s3_high = pmin(1, 1.2 * alpha_s3),
     vat_direct_local_strict_item =
@@ -270,6 +274,12 @@ conso_local <- conso_with_rates %>%
       depan_w * alpha_s3 / (1 + r_vat_official) *
         embedded_rate / (1 + embedded_rate) +
       depan_w * (1 - alpha_s3) * embedded_rate / (1 + embedded_rate),
+    vat_direct_local_s4_item =
+      depan_w * alpha_s4 * r_vat_official / (1 + r_vat_official),
+    vat_emb_local_s4_item =
+      depan_w * alpha_s4 / (1 + r_vat_official) *
+        embedded_rate / (1 + embedded_rate) +
+      depan_w * (1 - alpha_s4) * embedded_rate / (1 + embedded_rate),
     vat_direct_local_s3_alpha_low_item =
       depan_w * alpha_s3_low * r_vat_official / (1 + r_vat_official),
     vat_emb_local_s3_alpha_low_item =
@@ -320,6 +330,8 @@ hh_local <- conso_local %>%
     vat_emb_local_s2 = sum(vat_emb_local_s2_item, na.rm = TRUE),
     vat_direct_local_s3 = sum(vat_direct_local_s3_item, na.rm = TRUE),
     vat_emb_local_s3 = sum(vat_emb_local_s3_item, na.rm = TRUE),
+    vat_direct_local_s4 = sum(vat_direct_local_s4_item, na.rm = TRUE),
+    vat_emb_local_s4 = sum(vat_emb_local_s4_item, na.rm = TRUE),
     vat_direct_local_s3_alpha_low = sum(vat_direct_local_s3_alpha_low_item, na.rm = TRUE),
     vat_emb_local_s3_alpha_low = sum(vat_emb_local_s3_alpha_low_item, na.rm = TRUE),
     vat_direct_local_s3_alpha_high = sum(vat_direct_local_s3_alpha_high_item, na.rm = TRUE),
@@ -345,6 +357,7 @@ hh_local <- conso_local %>%
       vat_direct_local_strict + vat_emb_local_strict,
     vat_total_local_s2 = vat_direct_local_s2 + vat_emb_local_s2,
     vat_total_local_s3 = vat_direct_local_s3 + vat_emb_local_s3,
+    vat_total_local_s4 = vat_direct_local_s4 + vat_emb_local_s4,
     vat_total_local_s3_alpha_low =
       vat_direct_local_s3_alpha_low + vat_emb_local_s3_alpha_low,
     vat_total_local_s3_alpha_high =
@@ -388,7 +401,7 @@ fiscal_local <- fiscal %>%
   )
 
 io_scenarios <- c(
-  "strict", "s2", "s3", "s3_alpha_low", "s3_alpha_high",
+  "strict", "s2", "s3", "s4", "s3_alpha_low", "s3_alpha_high",
   "s3_upstream_75", "s3_upstream_50", "s3_unmapped_imputed", "s3_legal"
 )
 summary_macro <- purrr::map_dfr(io_scenarios, function(scenario) {

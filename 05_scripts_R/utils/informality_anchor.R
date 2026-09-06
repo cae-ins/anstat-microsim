@@ -359,12 +359,20 @@ vat_unit_value_gradient <- function(paths, conso_item, hh_decile) {
   # cellule, ce qui neutralise le produit, l'unite, le conditionnement et la
   # region. On regresse ensuite le logarithme du prix relatif sur le rang de
   # decile, separement pour les produits taxes et non taxes.
+  #
+  # La quantite achetee en une seule fois subit la meme transformation
+  # intra-cellule. Un menage aise achetant en plus grand conditionnement obtient
+  # un prix unitaire plus bas par simple remise sur quantite, effet etranger au
+  # circuit taxe : la specification controlee l'absorbe, la specification brute
+  # est conservee pour comparaison.
   echantillon <- achats |>
     dplyr::filter(cellule %in% cellules_exploitables$cellule) |>
     dplyr::group_by(cellule) |>
     dplyr::mutate(
       prix_relatif = log(prix_unitaire) -
-        stats::weighted.mean(log(prix_unitaire), hhweight)
+        stats::weighted.mean(log(prix_unitaire), hhweight),
+      log_quantite_relatif = log(quantite) -
+        stats::weighted.mean(log(quantite), hhweight)
     ) |>
     dplyr::ungroup()
 
@@ -372,29 +380,52 @@ vat_unit_value_gradient <- function(paths, conso_item, hh_decile) {
   # deux groupes partagent les memes grappes, si bien que la difference des
   # deux pentes n'aurait pas d'erreur type correcte si elle etait recomposee.
   echantillon$grappe_cluster <- floor(echantillon$hhid / 100)
-  modele <- stats::lm(prix_relatif ~ decile * taxe, data = echantillon,
-                      weights = echantillon$hhweight)
-  test <- lmtest::coeftest(
-    modele, vcov. = sandwich::vcovCL(modele, cluster = echantillon$grappe_cluster))
-  extraire <- function(terme, etiquette, observations) {
-    tibble::tibble(
-      groupe = etiquette, observations = observations,
-      pente_par_decile = unname(test[terme, "Estimate"]),
-      erreur_type = unname(test[terme, "Std. Error"]),
-      p_value = unname(test[terme, "Pr(>|t|)"])
-    )
-  }
   n_taxe <- sum(echantillon$taxe == 1L)
   n_non_taxe <- sum(echantillon$taxe == 0L)
-  pente_non_taxe <- extraire("decile", "Produits non taxes", n_non_taxe)
-  ecart <- extraire("decile:taxe", "Difference taxes moins non taxes",
-                    nrow(echantillon))
-  pente_taxe <- tibble::tibble(
-    groupe = "Produits taxes", observations = n_taxe,
-    pente_par_decile = pente_non_taxe$pente_par_decile + ecart$pente_par_decile,
-    erreur_type = NA_real_, p_value = NA_real_
-  )
-  gradient <- dplyr::bind_rows(pente_taxe, pente_non_taxe, ecart) |>
+
+  estimer_gradient <- function(formule, etiquette_specification) {
+    modele <- stats::lm(formule, data = echantillon,
+                        weights = echantillon$hhweight)
+    test <- lmtest::coeftest(
+      modele,
+      vcov. = sandwich::vcovCL(modele, cluster = echantillon$grappe_cluster))
+    extraire <- function(terme, etiquette, observations) {
+      tibble::tibble(
+        specification = etiquette_specification,
+        groupe = etiquette, observations = observations,
+        pente_par_decile = unname(test[terme, "Estimate"]),
+        erreur_type = unname(test[terme, "Std. Error"]),
+        p_value = unname(test[terme, "Pr(>|t|)"])
+      )
+    }
+    pente_non_taxe <- extraire("decile", "Produits non taxes", n_non_taxe)
+    ecart <- extraire("decile:taxe", "Difference taxes moins non taxes",
+                      nrow(echantillon))
+    pente_taxe <- tibble::tibble(
+      specification = etiquette_specification,
+      groupe = "Produits taxes", observations = n_taxe,
+      pente_par_decile = pente_non_taxe$pente_par_decile +
+        ecart$pente_par_decile,
+      erreur_type = NA_real_, p_value = NA_real_
+    )
+    lignes <- dplyr::bind_rows(pente_taxe, pente_non_taxe, ecart)
+    if ("log_quantite_relatif" %in% rownames(test)) {
+      lignes <- dplyr::bind_rows(
+        lignes,
+        extraire("log_quantite_relatif",
+                 "Elasticite prix-quantite (controle)", nrow(echantillon))
+      )
+    }
+    list(table = lignes, ecart = ecart)
+  }
+
+  brut <- estimer_gradient(
+    prix_relatif ~ decile * taxe, "Sans controle de quantite")
+  controle <- estimer_gradient(
+    prix_relatif ~ decile * taxe + log_quantite_relatif,
+    "Avec controle de quantite")
+
+  gradient <- dplyr::bind_rows(brut$table, controle$table) |>
     dplyr::mutate(
       lecture = "Pente du logarithme du prix unitaire relatif par rang de decile"
     )
@@ -413,23 +444,33 @@ vat_unit_value_gradient <- function(paths, conso_item, hh_decile) {
     4.5 * parametres_alimentaires$slope
   pente_prix_impliquee_s3 <- taux_moyen_taxe * parametres_alimentaires$slope /
     (1 + alpha_median_s3 * taux_moyen_taxe)
-  confrontation <- tibble::tibble(
-    grandeur = c("Taux de TVA moyen des produits taxes retenus",
-                 "Pente alpha par decile postulee par S3 (alimentation)",
-                 "Pente de prix impliquee par S3",
-                 "Pente de prix observee (difference taxes moins non taxes)",
-                 "Borne basse de l'intervalle a 95 % de la pente observee",
-                 "Borne haute de l'intervalle a 95 % de la pente observee",
-                 "La pente impliquee par S3 est dans l'intervalle observe"),
-    valeur = c(
-      taux_moyen_taxe, parametres_alimentaires$slope, pente_prix_impliquee_s3,
-      ecart$pente_par_decile,
-      ecart$pente_par_decile - 1.96 * ecart$erreur_type,
-      ecart$pente_par_decile + 1.96 * ecart$erreur_type,
-      as.numeric(
-        pente_prix_impliquee_s3 >= ecart$pente_par_decile - 1.96 * ecart$erreur_type &
-        pente_prix_impliquee_s3 <= ecart$pente_par_decile + 1.96 * ecart$erreur_type)
+  confronter <- function(ecart, etiquette_specification) {
+    tibble::tibble(
+      specification = etiquette_specification,
+      grandeur = c("Taux de TVA moyen des produits taxes retenus",
+                   "Pente alpha par decile postulee par S3 (alimentation)",
+                   "Pente de prix impliquee par S3",
+                   "Pente de prix observee (difference taxes moins non taxes)",
+                   "Borne basse de l'intervalle a 95 % de la pente observee",
+                   "Borne haute de l'intervalle a 95 % de la pente observee",
+                   "La pente impliquee par S3 est dans l'intervalle observe"),
+      valeur = c(
+        taux_moyen_taxe, parametres_alimentaires$slope,
+        pente_prix_impliquee_s3,
+        ecart$pente_par_decile,
+        ecart$pente_par_decile - 1.96 * ecart$erreur_type,
+        ecart$pente_par_decile + 1.96 * ecart$erreur_type,
+        as.numeric(
+          pente_prix_impliquee_s3 >=
+            ecart$pente_par_decile - 1.96 * ecart$erreur_type &
+          pente_prix_impliquee_s3 <=
+            ecart$pente_par_decile + 1.96 * ecart$erreur_type)
+      )
     )
+  }
+  confrontation <- dplyr::bind_rows(
+    confronter(brut$ecart, "Sans controle de quantite"),
+    confronter(controle$ecart, "Avec controle de quantite")
   )
 
   list(faisabilite = faisabilite, gradient = gradient,
@@ -512,6 +553,13 @@ build_informality_anchor <- function(paths, conso_item, hh_decile) {
       "Une fonction dont l'offre rapprochee depasse la consommation observee, ou qui compte moins de trente entreprises, est declaree non exploitable et conserve le coefficient de S3",
       "Le scenario S4 majore la charge de TVA compatible avec l'offre observee et ne remplace pas S3"
     )
+  )
+
+  # La matrice alpha de S4 est persistee : la chaine de TVA enchassee (etapes 14
+  # et 15 du pipeline) en a besoin sans pouvoir relire le module 10.
+  save_parquet(
+    alpha_s4,
+    file.path(paths$SILVER, "06", "vat_alpha_s4.parquet")
   )
 
   openxlsx::write.xlsx(
