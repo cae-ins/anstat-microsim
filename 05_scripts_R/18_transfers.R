@@ -403,6 +403,122 @@ transfers <- function(paths) {
     )
 
   # -------------------------------------------------------------------------
+  # 2 bis. Validation hors echantillon du PMT
+  # -------------------------------------------------------------------------
+  # Le modele PMT est ajuste et evalue sur les memes menages, ce qui flatte
+  # mecaniquement sa performance apparente de ciblage. Une validation croisee en
+  # cinq blocs fournit un score reellement hors echantillon. Les blocs sont
+  # constitues par grappe, unite de tirage de l'enquete : decouper par menage
+  # laisserait fuiter de l'information entre blocs, car deux menages d'une meme
+  # grappe partagent leur environnement local.
+  #
+  # La repartition des grappes est faite a l'interieur de chaque region, de sorte
+  # que chaque bloc d'apprentissage couvre toutes les regions du modele.
+  #
+  # Ce bloc est un diagnostic : la selection centrale du PSSN reste celle du
+  # modele ajuste sur l'echantillon complet et n'est pas modifiee ici.
+  pmt_folds <- 5L
+  pmt_design <- stats::model.matrix(pmt_model)
+  pmt_y <- log(hh_pmt$yd_pc)
+  pmt_w <- hh_pmt$hhweight
+  if (nrow(pmt_design) != nrow(hh_pmt)) {
+    stop("La matrice de regression PMT ne couvre pas tous les menages.",
+         call. = FALSE)
+  }
+  set.seed(20240927L)
+  cluster_folds <- hh_pmt |>
+    dplyr::distinct(region_factor, grappe) |>
+    dplyr::group_by(region_factor) |>
+    dplyr::mutate(
+      pmt_fold = sample(rep_len(seq_len(pmt_folds), dplyr::n()))
+    ) |>
+    dplyr::ungroup()
+  hh_pmt <- hh_pmt |>
+    dplyr::left_join(cluster_folds, by = c("region_factor", "grappe"))
+  if (anyNA(hh_pmt$pmt_fold)) {
+    stop("Une grappe n'a pas recu de bloc de validation croisee.", call. = FALSE)
+  }
+  pmt_pred_oos_log <- rep(NA_real_, nrow(hh_pmt))
+  for (k in seq_len(pmt_folds)) {
+    apprentissage <- hh_pmt$pmt_fold != k
+    ajustement <- stats::lm.wfit(
+      x = pmt_design[apprentissage, , drop = FALSE],
+      y = pmt_y[apprentissage],
+      w = pmt_w[apprentissage]
+    )
+    beta <- ajustement$coefficients
+    # Une modalite absente d'un bloc d'apprentissage donne un coefficient non
+    # estimable : elle est alors absorbee dans la constante plutot que de faire
+    # echouer la prediction.
+    beta[!is.finite(beta)] <- 0
+    pmt_pred_oos_log[!apprentissage] <- as.numeric(
+      pmt_design[!apprentissage, , drop = FALSE] %*% beta
+    )
+  }
+  if (anyNA(pmt_pred_oos_log)) {
+    stop("La validation croisee du PMT laisse des menages sans score.",
+         call. = FALSE)
+  }
+  hh_pmt$pmt_pred_oos_pc <- exp(pmt_pred_oos_log)
+  r2_pondere <- function(observe, predit, poids) {
+    moyenne <- stats::weighted.mean(observe, poids)
+    1 - sum(poids * (observe - predit)^2) / sum(poids * (observe - moyenne)^2)
+  }
+  pmt_fit_quality <- tibble::tibble(
+    mesure = c("R2 pondere en echantillon", "R2 pondere hors echantillon",
+               "Nombre de blocs", "Nombre de grappes",
+               "Correlation des rangs en et hors echantillon"),
+    valeur = c(
+      r2_pondere(pmt_y, as.numeric(stats::fitted(pmt_model)), pmt_w),
+      r2_pondere(pmt_y, pmt_pred_oos_log, pmt_w),
+      pmt_folds,
+      dplyr::n_distinct(hh_pmt$grappe),
+      stats::cor(rank(hh_pmt$pmt_pred_pc), rank(hh_pmt$pmt_pred_oos_pc),
+                 method = "spearman")
+    )
+  )
+
+  # Metriques de ciblage : la meme cible ponderee de menages est appliquee au
+  # classement en echantillon, au classement hors echantillon et a la variante
+  # fondee d'abord sur les declarations du module 15.
+  pauvre_pmt <- hh_pmt$yd_pc < hh_pmt$zref
+  targeting_metrics <- function(selection, etiquette) {
+    w <- hh_pmt$hhweight
+    tibble::tibble(
+      regle = etiquette,
+      menages_selectionnes_ponderes = sum(w[selection]),
+      part_selectionnes_pauvres = stats::weighted.mean(
+        pauvre_pmt[selection], w[selection]
+      ),
+      couverture_des_pauvres = sum(w[selection & pauvre_pmt]) /
+        sum(w[pauvre_pmt]),
+      fuite_vers_non_pauvres = sum(w[selection & !pauvre_pmt]) / sum(w[selection]),
+      erreur_exclusion = sum(w[!selection & pauvre_pmt]) / sum(w[pauvre_pmt]),
+      erreur_inclusion = sum(w[selection & !pauvre_pmt]) / sum(w[!pauvre_pmt])
+    )
+  }
+  selection_par_score <- function(score) {
+    rang <- order(score, hh_pmt$hhid)
+    coupure <- which.min(abs(cumsum(hh_pmt$hhweight[rang]) - pssn_target_hh))
+    selection <- rep(FALSE, nrow(hh_pmt))
+    selection[rang[seq_len(coupure)]] <- TRUE
+    selection
+  }
+  selection_declares_dabord <- hh_pmt$hhid %in%
+    hybrid_rank$hhid[hybrid_rank$pssn_selected_reported_first]
+  pmt_out_of_sample <- dplyr::bind_rows(
+    targeting_metrics(selection_par_score(hh_pmt$pmt_pred_pc),
+                      "PMT en echantillon (selection centrale)"),
+    targeting_metrics(selection_par_score(hh_pmt$pmt_pred_oos_pc),
+                      "PMT hors echantillon (validation croisee, 5 blocs)"),
+    targeting_metrics(selection_declares_dabord,
+                      "Declarations S15 d'abord, complement PMT")
+  ) |>
+    dplyr::mutate(
+      lecture = "La regle centrale reste le PMT en echantillon; les deux autres lignes sont des diagnostics."
+    )
+
+  # -------------------------------------------------------------------------
   # 3. Bourses, prestations familiales et accidents du travail
   # -------------------------------------------------------------------------
   scholarships <- s02 |>
@@ -937,6 +1053,20 @@ transfers <- function(paths) {
     progressivity,
     file.path(paths$TABLES, "18", "18_06_progressivity_inference.xlsx")
   )
+
+  openxlsx::write.xlsx(
+    list(
+      ciblage = as.data.frame(pmt_out_of_sample),
+      qualite_ajustement = as.data.frame(pmt_fit_quality)
+    ),
+    file = file.path(paths$TABLES, "18", "18_07_pmt_out_of_sample.xlsx"),
+    overwrite = TRUE
+  )
+  message(sprintf(
+    "  PMT : part de beneficiaires pauvres %.1f %% en echantillon, %.1f %% hors echantillon",
+    100 * pmt_out_of_sample$part_selectionnes_pauvres[[1]],
+    100 * pmt_out_of_sample$part_selectionnes_pauvres[[2]]
+  ))
 
   figure_data <- hh |>
     dplyr::transmute(

@@ -82,7 +82,18 @@
       "Bash(Rscript -e \"if\\(requireNamespace\\('PracTools', quietly=TRUE\\)\\) packageVersion\\('PracTools'\\) else 'not installed'\")",
       "Bash(cmd /c \"where Rscript\")",
       "Bash(cmd /c \"where /R \\\\\"C:\\\\\\\\Program Files\\\\\" Rscript.exe\")",
-      "WebFetch(domain:dickoa.gitlab.io)"
+      "WebFetch(domain:dickoa.gitlab.io)",
+      "PowerShell(cd *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(cd C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim; $R=\"C:\\\\Program Files\\\\R\\\\R-4.5.3\\\\bin\\\\Rscript.exe\"; & $R -e \"options\\(width=200\\); f<-'07_reports/tables/16/16_03_coverage_kakwani.xlsx'; d<-readxl::read_excel\\(f\\); print\\(as.data.frame\\(d\\)\\)\")",
+      "PowerShell(cd C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim; $R=\"C:\\\\Program Files\\\\R\\\\R-4.5.3\\\\bin\\\\Rscript.exe\"; & $R -e \"options\\(width=220\\); for\\(f in c\\('07_reports/tables/13/13_02_io_diagnostics.xlsx','07_reports/tables/13/13_03_local_io_diagnostics_current.xlsx','07_reports/tables/13/13_03_local_io_diagnostics_constant.xlsx'\\)\\){cat\\('=====',f,'=====\\\\n'\\); print\\(as.data.frame\\(readxl::read_excel\\(f\\)\\)\\)}\")",
+      "PowerShell(cd C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim; $R=\"C:\\\\Program Files\\\\R\\\\R-4.5.3\\\\bin\\\\Rscript.exe\"; & $R -e \"options\\(width=220\\); for\\(f in c\\('07_reports/tables/16/16_06_cmu_calibration.xlsx','07_reports/tables/16/16_09_external_validation.xlsx'\\)\\){cat\\('=====',f,'=====\\\\n'\\); print\\(as.data.frame\\(readxl::read_excel\\(f\\)\\)\\)}\")",
+      "PowerShell(cd C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim; $R=\"C:\\\\Program Files\\\\R\\\\R-4.5.3\\\\bin\\\\Rscript.exe\"; & $R -e \"options\\(width=220\\); for\\(f in c\\('07_reports/tables/14/14_01_fgt_comparison.xlsx','07_reports/tables/14/14_03_new_poor_central.xlsx','07_reports/tables/14/14_04_nouveaux_pauvres_io.xlsx'\\)\\){cat\\('=====',f,'=====\\\\n'\\); print\\(as.data.frame\\(readxl::read_excel\\(f\\)\\)\\)}\")",
+      "PowerShell(Get-Content C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim\\\\02_data_intermediate\\\\IO_local\\\\current\\\\valuation_bridge_2023.csv -TotalCount 5; ''; Get-Content C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim\\\\02_data_intermediate\\\\IO_local\\\\current\\\\hfce_2023.csv -TotalCount 5)",
+      "PowerShell(Get-Content C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim\\\\01_data_sources\\\\concordance_codpr_ICIO.csv -TotalCount 3; ''; Select-String -Path C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim\\\\01_data_sources\\\\concordance_codpr_ICIO.csv -Pattern 'tabac|alcool|cigarette|bi[eè]re|vin|essence|gasoil|p[ée]trole|carburant' | Select-Object -First 25 | ForEach-Object Line)",
+      "PowerShell(Select-String -Path C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim\\\\01_data_sources\\\\concordance_codpr_ICIO.csv -Pattern '^30[0-5],|^16[3-6],' | ForEach-Object Line; ''; ls C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim\\\\00_documentation; ''; Select-String -Path C:\\\\Users\\\\f.migone\\\\Desktop\\\\projects\\\\actif\\\\anstat-microsim\\\\05_scripts_R\\\\utils\\\\leontief_vat.R -Pattern 'function' | ForEach-Object Line)",
+      "Bash(grep -oE \"^@[a-zA-Z]+\\\\{[^,]+\" 00_documentation/working_paper/references.bib)",
+      "Bash(grep -oE \"\\\\\\\\\\\\\\\\cite[tp]?\\\\{[^}]+\\\\}\" 00_documentation/working_paper/DT_CEQ_CIV2021.tex)"
     ]
   }
 }

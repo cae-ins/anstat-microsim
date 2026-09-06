@@ -38,7 +38,9 @@ Rscript --vanilla replication_package/code/00_preflight.R
 Rscript --vanilla replication_package/code/00_run_all.R
 ```
 
-Le premier script ne modifie aucune donnée. Il vérifie les fichiers, empreintes, paquets, espace disque et droits d’écriture. Le second lance les 26 étapes, enregistre un journal horodaté et exécute les contrôles finaux.
+Sous PowerShell Windows, si R affiche `Setting LC_COLLATE=(null) failed`, définir d'abord `$env:LC_COLLATE='C'`. Cela évite seulement un avertissement de démarrage; les sorties vérifiées restent identiques.
+
+Le premier script ne modifie aucune donnée. Il vérifie les fichiers, empreintes, paquets, espace disque et droits d'écriture. Le second lance les 26 étapes, enregistre un journal horodaté et exécute les contrôles finaux.
 
 Pour vérifier des sorties déjà construites sans recalculer le modèle :
 
@@ -48,7 +50,7 @@ Rscript --vanilla replication_package/code/01_verify_outputs.R
 
 ## Temps et ressources
 
-La machine de référence utilise Windows 11, R 4.5.3 et 16 Go de mémoire ou davantage. Le dernier test complet a duré 350,4 secondes, soit environ 5 minutes 50 secondes, sur la machine de référence. Le temps exact est enregistré dans `output/runtime.txt` et varie avec le processeur, le disque et les 500 réplications Rao–Wu.
+La machine de référence utilise Windows 11, R 4.5.3 et 16 Go de mémoire ou davantage. Le dernier test complet a duré 452,17 secondes, soit environ 7 minutes 32 secondes, sur la machine de référence. Le temps exact est enregistré dans `output/runtime.txt` et varie avec le processeur, le disque et les 500 réplications Rao–Wu.
 
 ## Ce qui est vérifié automatiquement
 
@@ -59,7 +61,7 @@ La machine de référence utilise Windows 11, R 4.5.3 et 16 Go de mémoire ou da
 - reproduction, dans les tolérances publiées, des principaux Gini, taux de pauvreté, masses et diagnostics de ciblage;
 - absence de chemin absolu propre à la machine dans le code d’analyse principal.
 
-Le dernier contrôle donne 40 PASS au pré-contrôle et 32 PASS à la vérification finale, sans échec. La vérification confirme aussi la présence des sorties et la parité des 34 labels de tableaux et figures avec `exhibit_map.csv`. L'audit des affirmations numériques principales se trouve dans `../00_documentation/working_paper/quality_reports/reproducibility_audit_DT_CEQ_CIV2021.md`; son fichier structuré est `reproducibility_claims_DT_CEQ_CIV2021.json` dans le même dossier.
+Le dernier contrôle donne 41 PASS au pré-contrôle et 32 PASS à la vérification finale, sans échec. La vérification confirme aussi la présence des sorties et la parité des 33 labels de tableaux et figures avec `exhibit_map.csv`. L'audit des affirmations numériques principales se trouve dans `../00_documentation/working_paper/quality_reports/reproducibility_audit_DT_CEQ_CIV2021.md`; son fichier structuré est `reproducibility_claims_DT_CEQ_CIV2021.json` dans le même dossier.
 
 ## Reproduction par un agent
 

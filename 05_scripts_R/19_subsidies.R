@@ -168,6 +168,9 @@ subsidies <- function(paths) {
   hh$subsidy_electricity_hh_high <- allocate_macro(
     hh$social_electricity_high
   )
+  # Robustesse : l'aide d'exploitation est une enveloppe sectorielle. Elle est
+  # donc aussi répartie entre tous les ménages ayant une facture positive.
+  hh$subsidy_electricity_all_users_hh <- allocate_macro(positive_bill)
 
   # -----------------------------------------------------------------------
   # Eau
@@ -250,6 +253,9 @@ subsidies <- function(paths) {
       subsidy_total_hh =
         subsidy_electricity_hh + subsidy_water_hh +
         subsidy_fuel_direct_hh + subsidy_fuel_embedded_hh,
+      subsidy_total_electricity_all_users_hh =
+        subsidy_electricity_all_users_hh + subsidy_water_hh +
+        subsidy_fuel_direct_hh + subsidy_fuel_embedded_hh,
       subsidy_total_hh_low =
         subsidy_electricity_hh_low + subsidy_water_network_hh,
       subsidy_total_hh_high =
@@ -260,12 +266,14 @@ subsidies <- function(paths) {
       dplyr::across(
         c(
           subsidy_electricity_hh, subsidy_electricity_hh_low,
-          subsidy_electricity_hh_high, subsidy_water_network_hh,
+          subsidy_electricity_hh_high, subsidy_electricity_all_users_hh,
+          subsidy_water_network_hh,
           subsidy_water_reseller_hh, subsidy_water_reseller_hh_high,
           subsidy_water_hh, subsidy_water_hh_high,
           subsidy_fuel_direct_hh, subsidy_fuel_embedded_hh,
           subsidy_fuel_direct_hh_high, subsidy_fuel_embedded_hh_high,
-          subsidy_total_hh, subsidy_total_hh_low, subsidy_total_hh_high
+          subsidy_total_hh, subsidy_total_hh_low, subsidy_total_hh_high,
+          subsidy_total_electricity_all_users_hh
         ),
         ~ .x * def_spa,
         .names = "{.col}_real"
@@ -286,7 +294,11 @@ subsidies <- function(paths) {
   electricity_reconciliation <- sum(
     hh$subsidy_electricity_hh * hh$hhweight
   )
-  if (abs(electricity_reconciliation - macro_electricity) > 1) {
+  electricity_reconciliation_all_users <- sum(
+    hh$subsidy_electricity_all_users_hh * hh$hhweight
+  )
+  if (abs(electricity_reconciliation - macro_electricity) > 1 ||
+      abs(electricity_reconciliation_all_users - macro_electricity) > 1) {
     stop("Le calage électrique ne retrouve pas la masse administrative.",
          call. = FALSE)
   }
@@ -298,7 +310,8 @@ subsidies <- function(paths) {
     "spending_electricity", "spending_water_network",
     "spending_water_reseller", "spending_fuel", "social_electricity",
     "estimated_kwh", "estimated_water_m3", "estimated_fuel_litres",
-    "subsidy_electricity_hh", "subsidy_water_network_hh",
+    "subsidy_electricity_hh", "subsidy_electricity_all_users_hh",
+    "subsidy_water_network_hh",
     "subsidy_water_reseller_hh", "subsidy_water_hh",
     "subsidy_fuel_direct_hh", "subsidy_fuel_embedded_hh",
     "subsidy_total_hh", "subsidy_total_hh_low", "subsidy_total_hh_high",
@@ -306,7 +319,8 @@ subsidies <- function(paths) {
     "subsidy_water_reseller_hh_real", "subsidy_water_hh_real",
     "subsidy_fuel_direct_hh_real", "subsidy_fuel_embedded_hh_real",
     "subsidy_total_hh_real", "subsidy_total_hh_low_real",
-    "subsidy_total_hh_high_real", "subsidy_total_pc_real", "eff_subsidy"
+    "subsidy_total_hh_high_real", "subsidy_total_electricity_all_users_hh_real",
+    "subsidy_total_pc_real", "eff_subsidy"
   )
   save_parquet(
     hh |>
@@ -443,20 +457,29 @@ subsidies <- function(paths) {
   )
 
   sensitivity <- tibble::tibble(
-    scenario = c("Central", "Borne basse", "Borne haute documentée"),
+    scenario = c(
+      "Central", "Électricité répartie entre tous les clients",
+      "Borne basse", "Borne haute documentée"
+    ),
     definition = c(
       "30 % de clients électriques sociaux; eau du réseau; aucun soutien carburant.",
+      "Les 8,69 milliards d'aide d'exploitation sont répartis entre tous les ménages ayant une facture positive, au prorata des kWh estimés.",
       "20 % de clients électriques sociaux; eau du réseau; aucun revendeur ni carburant.",
       "40 % de clients électriques sociaux; marge revendeur de 20 %; écart carburant de 80 FCFA/litre provenant de 2022 et clairement séparé."
     ),
     masse_milliards = c(
       sum(hh$subsidy_total_hh * hh$hhweight) / 1e9,
+      sum(hh$subsidy_total_electricity_all_users_hh * hh$hhweight) / 1e9,
       sum(hh$subsidy_total_hh_low * hh$hhweight) / 1e9,
       sum(hh$subsidy_total_hh_high * hh$hhweight) / 1e9
     ),
     gini_apres = c(
       weighted_gini(
         pmax(hh$yd_pc + hh$subsidy_total_hh_real / hh$hhsize, 0),
+        hh$pcweight
+      ),
+      weighted_gini(
+        pmax(hh$yd_pc + hh$subsidy_total_electricity_all_users_hh_real / hh$hhsize, 0),
         hh$pcweight
       ),
       weighted_gini(

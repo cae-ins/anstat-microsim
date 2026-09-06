@@ -7,7 +7,7 @@
 # - Gini (consommation pre- et post-taxe)
 # - Indice de concentration CI(TVA)
 # - Kakwani = CI(TVA) - Gini(pre-tax)
-# - Reynolds-Smolensky = Gini_apres - Gini_avant
+# - Reynolds-Smolensky = Gini_avant - Gini_apres (convention CEQ)
 #
 # COURBES :
 # - Courbe de Lorenz (groupee, par decile)
@@ -37,7 +37,7 @@ run_progressivity <- function(paths) {
     hh$vat_w_real / hh$hhsize, hh$yd_pc, hh$pcweight
   )
   Kakwani   <- C_vat - G_market
-  RS        <- G_consump - G_market
+  RS        <- G_market - G_consump
 
   message("--------------------------------")
   message(sprintf("Gini avant   = %.4f", G_market))

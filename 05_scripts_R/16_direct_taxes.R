@@ -256,9 +256,11 @@ direct_taxes <- function(paths) {
         bi_m      = ABATTEMENT * sbi_m,
         is_m      = TAUX_IS * sbi_m,
         cn_m      = calc_cn(bi_m),
-        r_m       = ABATTEMENT * (sbi_m - is_m - cn_m),
+        # Formule cédulaire 2021 : R = [80 % du salaire brut - (IS + CN)] x 85 %.
+        # Le facteur de 85 % porte sur la base IGR, pas sur l'impôt calculé.
+        r_m       = pmax((ABATTEMENT * sbi_m - is_m - cn_m) * 0.85, 0),
         q_m       = r_m / n_parts,
-        igr_m     = pmax(0, calc_igr_part(q_m)) * n_parts * 0.85,
+        igr_m     = pmax(0, calc_igr_part(q_m)) * n_parts,
         cnps_m    = TAUX_CNPS * pmin(sbi_m, PLAFOND_CNPS_M),
         irpp_an   = (is_m + cn_m + igr_m) * 12,
         cnps_an   = cnps_m * 12,

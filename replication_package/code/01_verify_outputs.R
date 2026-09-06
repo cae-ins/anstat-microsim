@@ -29,7 +29,13 @@ verify_main <- function(stop_on_fail = TRUE) {
     "07_reports/tables/06/06_03_vat_informality_parameters.xlsx",
     "07_reports/tables/13/13_07_legal_deduction_sensitivity.xlsx",
     "07_reports/tables/16/16_07_robustness_diagnostics.xlsx",
-    "replication_package/exhibit_map.csv"
+    "replication_package/exhibit_map.csv",
+    # Sorties ajoutees en v22. Elles sont placees en fin de liste : les indices
+    # positionnels utilises plus bas restent ainsi valides.
+    "02_data_intermediate/23/shapley_poverty.parquet",
+    "07_reports/tables/23/23_10_reranking.xlsx",
+    "07_reports/tables/18/18_07_pmt_out_of_sample.xlsx",
+    "07_reports/tables/06/06_04_informality_anchor_supply.xlsx"
   )
   for (p in required) add(p, if (file.exists(p)) "PASS" else "FAIL",
                           as.numeric(file.exists(p)), 1, 0, "présence")
@@ -50,7 +56,14 @@ verify_main <- function(stop_on_fail = TRUE) {
     "carte exhibits : sorties",
     if (length(missing_outputs) == 0L) "PASS" else "FAIL",
     length(missing_outputs), 0, 0,
-    if (length(missing_outputs)) paste(missing_outputs, collapse = " | ") else "34 sorties accessibles"
+    if (length(missing_outputs)) {
+      paste(missing_outputs, collapse = " | ")
+    } else {
+      # Les decomptes sont calcules, jamais ecrits en dur : une exhibit peut
+      # pointer vers plusieurs fichiers, et leur nombre evolue avec le papier.
+      sprintf("%d exhibits, %d chemins de sortie distincts, tous accessibles",
+              nrow(exhibit_map), length(unique(mapped_outputs)))
+    }
   )
   aux_path <- file.path(root, "00_documentation", "working_paper", "DT_CEQ_CIV2021.aux")
   aux_text <- paste(readLines(aux_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -63,7 +76,12 @@ verify_main <- function(stop_on_fail = TRUE) {
     "carte exhibits : labels",
     if (length(label_diff) == 0L) "PASS" else "FAIL",
     length(label_diff), 0, 0,
-    if (length(label_diff)) paste(label_diff, collapse = " | ") else "34 labels en parité"
+    if (length(label_diff)) {
+      paste(label_diff, collapse = " | ")
+    } else {
+      sprintf("%d labels du manuscrit en parite avec %d labels de la carte",
+              length(aux_labels), length(map_labels))
+    }
   )
   if (!requireNamespace("arrow", quietly = TRUE)) stop("arrow absent.")
   if (!requireNamespace("readxl", quietly = TRUE)) stop("readxl absent.")
@@ -84,6 +102,25 @@ verify_main <- function(stop_on_fail = TRUE) {
   }
   shap_err <- max(abs(unique(shap$variation_totale) - sum(shap$contribution_gini)), na.rm = TRUE)
   add("fermeture Shapley", if (shap_err <= 1e-10) "PASS" else "FAIL", shap_err, 0, 1e-10)
+
+  # Decomposition de Shapley de la pauvrete : meme controle de fermeture.
+  shap_pov <- arrow::read_parquet("02_data_intermediate/23/shapley_poverty.parquet")
+  shap_pov_pdi <- shap_pov[shap_pov$convention == "PDI", , drop = FALSE]
+  pov_err <- max(vapply(split(shap_pov_pdi, shap_pov_pdi$indice), function(d) {
+    abs(unique(d$variation_totale) - sum(d$contribution_pauvrete))
+  }, numeric(1)), na.rm = TRUE)
+  add("fermeture Shapley pauvreté", if (pov_err <= 1e-10) "PASS" else "FAIL",
+      pov_err, 0, 1e-10)
+
+  # Decomposition equite verticale moins reclassement : identite comptable.
+  reranking <- readxl::read_excel("07_reports/tables/23/23_10_reranking.xlsx")
+  rerank_err <- max(abs(reranking$reynolds_smolensky -
+    (reranking$equite_verticale - reranking$reclassement)), na.rm = TRUE)
+  add("fermeture équité verticale moins reclassement",
+      if (rerank_err <= 1e-10) "PASS" else "FAIL", rerank_err, 0, 1e-10)
+  rerank_min <- min(reranking$reclassement, na.rm = TRUE)
+  add("reclassement positif ou nul", if (rerank_min >= -1e-10) "PASS" else "FAIL",
+      rerank_min, 0, 1e-10, "le terme de reclassement ne peut pas être négatif")
 
   pmt <- readxl::read_excel(required[[6]], sheet = "pssn")
   pmt_value <- function(label) as.numeric(pmt$valeur[pmt$indicateur == label][[1]])
@@ -111,6 +148,21 @@ verify_main <- function(stop_on_fail = TRUE) {
     hit <- shap$contribution_gini[shap$instrument == shap_key[[nm]]]
     if (length(hit) == 1L) values[[paste0("shapley_", nm)]] <- hit
   }
+  # Contributions a la variation de l'incidence de la pauvrete.
+  shap_pov_p0 <- shap_pov_pdi[shap_pov_pdi$indice == "FGT0 : incidence", , drop = FALSE]
+  for (nm in names(shap_key)) {
+    hit <- shap_pov_p0$contribution_pauvrete[shap_pov_p0$instrument == shap_key[[nm]]]
+    if (length(hit) == 1L) values[[paste0("shapley_pauvrete_", nm)]] <- hit
+  }
+  # Reclassement du revenu primaire au revenu final et validation du PMT.
+  rerank_total <- reranking$reclassement[
+    reranking$element == "Revenu primaire vers revenu final"]
+  if (length(rerank_total) == 1L) values[["reclassement_primaire_final"]] <- rerank_total
+  pmt_oos <- readxl::read_excel("07_reports/tables/18/18_07_pmt_out_of_sample.xlsx",
+                                sheet = "ciblage")
+  hit <- pmt_oos$part_selectionnes_pauvres[
+    pmt_oos$regle == "PMT hors echantillon (validation croisee, 5 blocs)"]
+  if (length(hit) == 1L) values[["pmt_part_pauvres_hors_echantillon"]] <- hit
 
   expected <- utils::read.csv(file.path(out_dir, "expected_metrics.csv"), stringsAsFactors = FALSE)
   for (i in seq_len(nrow(expected))) {

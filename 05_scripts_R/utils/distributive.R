@@ -5,6 +5,7 @@
 #   - Concentration index
 #   - Kakwani index
 #   - Reynolds-Smolensky
+#   - Decomposition equite verticale / reclassement (Atkinson-Plotnick)
 #   - Weighted ntile (equivalent of Stata xtile with pw)
 #   - Bootstrap Kakwani CI
 #
@@ -70,11 +71,45 @@ kakwani_index <- function(t, welfare, w) {
 
 
 # ── Reynolds-Smolensky ────────────────────────────────────────────────────────
-# RS = Gini(after) - Gini(before)
-# < 0 : tax reduces inequality   (progressive enough)
-# > 0 : tax increases inequality (regressive)
+# Convention CEQ standard : RS = Gini(before) - Gini(after).
+# > 0 : l'intervention réduit l'inégalité.
+# < 0 : l'intervention accroît l'inégalité.
 reynolds_smolensky <- function(welfare_before, welfare_after, w) {
-  weighted_gini(welfare_after, w) - weighted_gini(welfare_before, w)
+  weighted_gini(welfare_before, w) - weighted_gini(welfare_after, w)
+}
+
+
+# ── Decomposition equite verticale / reclassement ─────────────────────────────
+# Atkinson (1980), Plotnick (1981) : la reduction d'inegalite mesuree par
+# Reynolds-Smolensky se scinde en un effet d'equite verticale et un effet de
+# reclassement des menages.
+#
+#   RS = G(avant) - G(apres)
+#   VE = G(avant) - C(apres | rang avant)     equite verticale
+#   R  = G(apres) - C(apres | rang avant)     reclassement, toujours >= 0
+#   RS = VE - R
+#
+# Le reclassement est nul si l'intervention preserve l'ordre des menages. Un
+# reclassement positif signale que l'intervention deplace des menages les uns
+# par rapport aux autres, meme lorsqu'elle reduit l'inegalite globale.
+#
+# Comme partout ailleurs dans la chaine, les revenus sont plancher a zero avant
+# le calcul des indices : l'indice de concentration n'est defini que sur une
+# variable positive.
+reranking_decomposition <- function(welfare_before, welfare_after, w) {
+  before <- pmax(welfare_before, 0)
+  after  <- pmax(welfare_after, 0)
+  gini_before <- weighted_gini(before, w)
+  gini_after  <- weighted_gini(after, w)
+  conc_after  <- weighted_conindex(after, before, w)
+  list(
+    gini_avant = gini_before,
+    gini_apres = gini_after,
+    concentration_apres_rang_avant = conc_after,
+    reynolds_smolensky = gini_before - gini_after,
+    equite_verticale = gini_before - conc_after,
+    reclassement = gini_after - conc_after
+  )
 }
 
 

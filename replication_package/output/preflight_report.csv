@@ -33,6 +33,7 @@
 "paquet R: openxlsx","PASS","4.2.8.1"
 "paquet R: readxl","PASS","1.4.5"
 "paquet R: readr","PASS","2.2.0"
+"paquet R: survey","PASS","4.5"
 "paquet R: sandwich","PASS","3.1.1"
 "paquet R: lmtest","PASS","0.9.40"
 "paquet R: jsonlite","PASS","2.0.0"

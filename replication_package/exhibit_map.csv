@@ -1,5 +1,4 @@
 "exhibit","manuscript_label","output","producer","producer_line","verification"
-"Tableau guide CEQ","tab:guide-lecture","00_documentation/working_paper/DT_CEQ_CIV2021.pdf","00_documentation/working_paper/DT_CEQ_CIV2021.tex","103","compilation LaTeX"
 "Tableau variables du questionnaire","tab:variables-questionnaire","00_documentation/working_paper/DT_CEQ_CIV2021.pdf","00_documentation/working_paper/DT_CEQ_CIV2021.tex","303","lecture croisée questionnaire-code"
 "Tableau descriptif","tab:descriptif","07_reports/tables/16/16_08_sample_description.xlsx","05_scripts_R/16_direct_taxes.R","860","contrôle source et effectifs"
 "Tableau lexique","tab:lexique","00_documentation/working_paper/DT_CEQ_CIV2021.pdf","00_documentation/working_paper/DT_CEQ_CIV2021.tex","415","compilation LaTeX"
@@ -33,3 +32,7 @@
 "Figure Shapley","fig:shapley","07_reports/figures/fig23_shapley.png","05_scripts_R/23_marginal_contribution.R","152","présence"
 "Figure appauvrissement fiscal","fig:fiscal-impoverishment","07_reports/figures/fig24_fiscal_impoverishment.png","05_scripts_R/24_fiscal_impoverishment.R","121","présence"
 "Figure réforme TVA","fig:reform-recycling","07_reports/figures/fig_reform_fgt_impact.png","05_scripts_R/15_reform_vat_simulation.R","362","présence"
+"Tableau inférence sur les concepts","tab:concepts-inference","07_reports/tables/22/22_06_concepts_inference.xlsx","05_scripts_R/22_income_concepts.R","221","bootstrap Rao-Wu 500 réplications"
+"Tableau Shapley pauvreté","tab:shapley-pauvrete","07_reports/tables/23/23_07_shapley_poverty_p0.xlsx;07_reports/tables/23/23_09_shapley_poverty_inference.xlsx","05_scripts_R/23_marginal_contribution.R","344","réconciliation somme égale variation totale"
+"Figure Shapley pauvreté","fig:shapley-poverty","07_reports/figures/fig23b_shapley_poverty.png","05_scripts_R/23_marginal_contribution.R","384","présence"
+"Tableau ancrage de l'informalité","tab:ancrage-offre","07_reports/tables/06/06_04_informality_anchor_supply.xlsx;07_reports/tables/06/06_05_unit_value_gradient.xlsx","05_scripts_R/utils/informality_anchor.R","526","concordance publiée et diagnostics de couverture"

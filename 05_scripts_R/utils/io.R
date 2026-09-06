@@ -170,3 +170,28 @@ tidy_lm_robust <- function(model, cluster_var, df_correction = TRUE) {
     sig       = stars
   )
 }
+
+
+# Extrait les coefficients d'un modele estime sur un objet survey::svydesign.
+# Les erreurs-types utilisent simultanement les poids, les strates et les grappes.
+tidy_svyglm <- function(model) {
+  coefs <- summary(model)$coefficients
+  if (is.null(dim(coefs)) || ncol(coefs) < 4L) {
+    stop("Table de coefficients svyglm inattendue.", call. = FALSE)
+  }
+  pval <- coefs[, 4]
+  stars <- dplyr::case_when(
+    pval < 0.01 ~ "***",
+    pval < 0.05 ~ "**",
+    pval < 0.10 ~ "*",
+    TRUE        ~ ""
+  )
+  tibble::tibble(
+    term      = rownames(coefs),
+    estimate  = coefs[, 1],
+    std_error = coefs[, 2],
+    t_stat    = coefs[, 3],
+    p_value   = pval,
+    sig       = stars
+  )
+}

@@ -5,7 +5,7 @@
 # trois scenarios d'informelite (strict, S2, S3).
 #
 # APPROCHE :
-# MCO avec SE robustes en cluster au niveau PSU (grappe).
+# Modeles lineaires de sondage avec poids menage, strates et grappes (svyglm).
 # Quatre modeles embotes par variable dependante :
 #   M1 : bivarie (lconso_w seulement)
 #   M2 : + demographiques du menage
@@ -71,6 +71,11 @@ run_determinants <- function(paths) {
       "hhsize", "n_items", "eff_vat_strict", "eff_vat_s2", "eff_vat_s3"),
     object_name = "determinants input"
   )
+  design_hh <- ceq_survey_design(hh, unit = "household")
+  message(sprintf(
+    "  Plan de sondage : poids menage, %d strates, %d degres de liberte",
+    length(unique(hh$strata)), survey::degf(design_hh)
+  ))
 
   # ── Descriptive stats ─────────────────────────────────────────────────────
   message(sprintf("  Correlation n_items / lconso_w: %.3f",
@@ -80,36 +85,35 @@ run_determinants <- function(paths) {
     message(sprintf("  Mean %s: %.4f", dv, weighted.mean(hh[[dv]], hh$hhweight)))
   }
 
-  # ── OLS models ────────────────────────────────────────────────────────────
-  fit_ols <- function(formula_str, data) {
-    lm(as.formula(formula_str), data = data, weights = data$hhweight)
-  }
-
-  cluster_for_model <- function(model, data, cluster_col = "grappe") {
-    used_rows <- as.integer(rownames(stats::model.frame(model)))
-    data[[cluster_col]][used_rows]
+  # -- Modeles lineaires tenant compte du plan de sondage --------------------
+  fit_svy <- function(formula_str, design) {
+    survey::svyglm(
+      stats::as.formula(formula_str),
+      design = design,
+      family = stats::gaussian()
+    )
   }
 
   models <- list()
   for (dv in c("strict", "s2", "s3")) {
     dep <- paste0("eff_vat_", dv)
-    models[[paste0(dv, "_m1")]] <- fit_ols(
-      paste(dep, "~ lconso_w"), hh
+    models[[paste0(dv, "_m1")]] <- fit_svy(
+      paste(dep, "~ lconso_w"), design_hh
     )
-    models[[paste0(dv, "_m2")]] <- fit_ols(
-      paste(dep, "~ lconso_w + hhsize + head_female + educ_high"), hh
+    models[[paste0(dv, "_m2")]] <- fit_svy(
+      paste(dep, "~ lconso_w + hhsize + head_female + educ_high"), design_hh
     )
-    models[[paste0(dv, "_m3")]] <- fit_ols(
+    models[[paste0(dv, "_m3")]] <- fit_svy(
       paste(dep, "~ lconso_w + hhsize + head_female + educ_high",
-            "+ urban + region_fac"), hh
+            "+ urban + region_fac"), design_hh
     )
-    models[[paste0(dv, "_m4")]] <- fit_ols(
+    models[[paste0(dv, "_m4")]] <- fit_svy(
       paste(dep, "~ lconso_w + hhsize + head_female + educ_high",
-            "+ urban + region_fac + n_items"), hh
+            "+ urban + region_fac + n_items"), design_hh
     )
   }
 
-  # ── Export regression tables (cluster-robust SE at grappe level) ──────────
+  # -- Export des regressions (poids, strates et grappes) -------------------
   coef_keep <- c("lconso_w", "hhsize", "head_female", "educ_high",
                  "urban", "n_items", "(Intercept)")
 
@@ -117,8 +121,7 @@ run_determinants <- function(paths) {
     panel_models <- models[grep(paste0("^", panel, "_"), names(models))]
 
     tab_list <- purrr::imap(panel_models, function(m, name) {
-      cl  <- cluster_for_model(m, hh)
-      res <- tidy_lm_robust(m, cluster_var = cl) %>%
+      res <- tidy_svyglm(m) %>%
         dplyr::filter(term %in% coef_keep) %>%
         dplyr::mutate(model = name)
       res
@@ -134,8 +137,7 @@ run_determinants <- function(paths) {
   m3_tab <- purrr::imap(
     models[grepl("_m3$", names(models))],
     function(m, name) {
-      cl  <- cluster_for_model(m, hh)
-      tidy_lm_robust(m, cluster_var = cl) %>%
+      tidy_svyglm(m) %>%
         dplyr::filter(term %in% c("lconso_w", "hhsize", "head_female",
                                    "educ_high", "urban", "(Intercept)")) %>%
         dplyr::mutate(model = name)
@@ -146,11 +148,11 @@ run_determinants <- function(paths) {
                file.path(paths$TABLES, "09", "09_reg_comparison_M3.xlsx"))
 
   # ── Figure 6 — Predicted effective VAT rate by income × milieu ───────────
-  m_interact <- lm(
+  m_interact <- survey::svyglm(
     eff_vat_s3 ~ lconso_w * urban + hhsize + head_female + educ_high +
       region_fac,
-    data    = hh,
-    weights = hh$hhweight
+    design = design_hh,
+    family = stats::gaussian()
   )
 
   # Prediction grid
@@ -172,7 +174,7 @@ run_determinants <- function(paths) {
       region_fac  = factor(top_region, levels = levels(hh$region_fac))
     )
 
-  pred_grid$pred <- predict(m_interact, newdata = pred_grid)
+  pred_grid$pred <- as.numeric(predict(m_interact, newdata = pred_grid))
 
   fig6 <- ggplot2::ggplot(pred_grid,
            ggplot2::aes(x = lconso_w, y = pred,
@@ -189,7 +191,7 @@ run_determinants <- function(paths) {
       x        = "Log total consumption (winsorized)",
       y        = "Predicted effective VAT rate (S3)",
       color    = NULL,
-      caption  = "Cluster-robust SE at grappe level. Survey weights. Region FE included."
+      caption  = "EHCVM design: household weights, strata and clusters. Region FE included."
     ) +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(
@@ -200,13 +202,33 @@ run_determinants <- function(paths) {
   export_fig(fig6, file.path(paths$FIGS, "fig6_margins_income_milieu.png"))
 
   # ── Non-linearity test ─────────────────────────────────────────────────────
-  m_nl <- lm(
+  m_nl <- survey::svyglm(
     eff_vat_s3 ~ lconso_w + lconso_w2 + hhsize + head_female + educ_high +
       urban + region_fac,
-    data    = hh,
-    weights = hh$hhweight
+    design = design_hh,
+    family = stats::gaussian()
   )
-  pval_nl <- summary(m_nl)$coefficients["lconso_w2", "Pr(>|t|)"]
+  nl_coef <- summary(m_nl)$coefficients["lconso_w2", ]
+  pval_nl <- nl_coef["Pr(>|t|)"]
+  nl_test <- tibble::tibble(
+    term = "lconso_w2",
+    estimate = unname(nl_coef["Estimate"]),
+    std_error = unname(nl_coef["Std. Error"]),
+    t_stat = unname(nl_coef["t value"]),
+    p_value = unname(pval_nl),
+    n_obs = stats::nobs(m_nl),
+    n_strata = dplyr::n_distinct(hh$strata),
+    design_df = survey::degf(design_hh),
+    decision_10pct = ifelse(
+      pval_nl < 0.10,
+      "forme non lineaire retenue",
+      "forme lineaire preferee"
+    )
+  )
+  export_excel(
+    nl_test,
+    file.path(paths$TABLES, "09", "09_nonlinearity_test.xlsx")
+  )
   message(sprintf("\n  Non-linearity test (lconso_w^2): p = %.4f — %s",
                   pval_nl,
                   ifelse(pval_nl < 0.10,

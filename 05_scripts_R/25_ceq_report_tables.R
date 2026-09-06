@@ -11,12 +11,18 @@ ceq_report_tables <- function(paths) {
   f_pmt <- file.path(paths$TABLES, "18", "18_02_coverage_targeting.xlsx")
   f_sub <- file.path(paths$SILVER, "19", "subsidies.parquet")
   f_other <- file.path(paths$SILVER, "17", "indirect_other.parquet")
+  f_reform <- file.path(paths$SILVER, "15", "reform_vat_hh.parquet")
   invisible(lapply(
-    c(f_income, f_shapley, f_fi, f_transfer, f_pmt, f_sub, f_other),
+    c(f_income, f_shapley, f_fi, f_transfer, f_pmt, f_sub, f_other, f_reform),
     assert_local_file_exists
   ))
   hh <- load_parquet(f_income); shapley <- load_parquet(f_shapley)
   fi_hh <- load_parquet(f_fi); tr <- load_parquet(f_transfer)
+  reform <- load_parquet(f_reform) |>
+    dplyr::filter(scenario == "S_all", hypothese == "S3") |>
+    dplyr::left_join(
+      tr |> dplyr::select(hhid, pssn_selected), by = "hhid"
+    )
 
   concept_vars <- c("yp_pc_pdi", "yn_pc_pdi", "yg_pc_pdi", "yd_pc", "yc_pc", "yf_pc")
   concept_labels <- c("Revenu primaire", "Revenu net de marché", "Revenu brut",
@@ -62,6 +68,46 @@ ceq_report_tables <- function(paths) {
   fiscal_poverty <- dplyr::bind_rows(
     fi_summary(hh$yp_pc_pdi, hh$yc_pc, "PDI"),
     fi_summary(hh$yp_pc_pgt, hh$yc_pc, "PGT"))
+
+  reform_population <- sum(reform$pcweight)
+  reform_revenue <- reform$transfert_pc_nominal[[1]] * reform_population
+  selected_households <- sum(reform$hhweight * reform$pssn_selected)
+  if (!is.finite(selected_households) || selected_households <= 0) {
+    stop("Aucun ménage PMT disponible pour la robustesse de recyclage.")
+  }
+  universal_pc <- reform_revenue / reform_population
+  targeted_hh <- reform_revenue / selected_households
+  reform_welfare <- list(
+    "Sans recyclage" = reform$yd_pc_sans_recyclage,
+    "Transfert universel, budget intégral" =
+      reform$yd_pc_sans_recyclage + universal_pc * reform$def_spa,
+    "Transfert universel, 10 % de coût de distribution" =
+      reform$yd_pc_sans_recyclage + 0.9 * universal_pc * reform$def_spa,
+    "Registre PMT du PSSN, budget intégral" =
+      reform$yd_pc_sans_recyclage + reform$pssn_selected *
+        targeted_hh * reform$def_spa / reform$hhsize,
+    "Registre PMT du PSSN, 10 % de coût de distribution" =
+      reform$yd_pc_sans_recyclage + reform$pssn_selected *
+        0.9 * targeted_hh * reform$def_spa / reform$hhsize
+  )
+  reform_delivery <- purrr::imap_dfr(reform_welfare, function(welfare, scenario) {
+    tibble::tibble(
+      scenario = scenario,
+      assiette_reforme = "Tous les produits admissibles initialement à taux nul",
+      transmission = "S3, fonction de consommation et décile",
+      part_recette_recyclee = dplyr::case_when(
+        scenario == "Sans recyclage" ~ 0,
+        grepl("10 %", scenario) ~ 0.9,
+        TRUE ~ 1
+      ),
+      taux_pauvrete = stats::weighted.mean(welfare < reform$zref, reform$pcweight),
+      gini = weighted_gini(pmax(welfare, 0), reform$pcweight),
+      gain_moyen_fcfa_personne = stats::weighted.mean(
+        welfare - reform$yd_pc_sans_recyclage, reform$pcweight
+      ),
+      recette_milliards_fcfa = reform_revenue / 1e9
+    )
+  })
 
   # Les références macro servent de contrôle de périmètre, jamais de cible de
   # calage. Les comptes ANStat couvrent toute l'économie; le modèle ne couvre
@@ -199,12 +245,19 @@ ceq_report_tables <- function(paths) {
     PMT_variables = as.data.frame(pmt_variables),
     PMT_calage = as.data.frame(pmt_calage),
     PMT_coefficients = as.data.frame(pmt_coefficients),
+    reforme_modalites_recyclage = as.data.frame(reform_delivery),
     dictionnaire = as.data.frame(dictionary))
   out_dir <- file.path(paths$TABLES, "25"); dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
   out_xlsx <- file.path(out_dir, "CEQ_CIV_2021_master.xlsx")
   openxlsx::write.xlsx(workbook, out_xlsx, overwrite = TRUE)
+  export_excel(
+    reform_delivery,
+    file.path(out_dir, "25_02_reform_delivery_sensitivity.xlsx")
+  )
 
-  manifest_files <- unique(c(unname(c(f_income, f_shapley, f_fi, f_transfer, f_sub, f_other)),
+  manifest_files <- unique(c(unname(c(
+    f_income, f_shapley, f_fi, f_transfer, f_sub, f_other, f_reform
+  )),
     file.path(paths$ROOT, "01_data_sources", c(
       "params_indirect_other_2021.xlsx", "params_transfers_2021.xlsx",
       "params_subsidies_2021.xlsx", "params_education_2021.xlsx",
@@ -229,13 +282,35 @@ ceq_report_tables <- function(paths) {
 
   gen_dir <- file.path(paths$ROOT, "00_documentation", "working_paper", "generated")
   dir.create(gen_dir, recursive = TRUE, showWarnings = FALSE)
+  # Les macros injectees dans le manuscrit portent la virgule decimale, sinon
+  # elles jureraient avec le reste du texte francais.
+  fr <- function(x, chiffres) sub(".", ",", sprintf(paste0("%.", chiffres, "f"), x),
+                                  fixed = TRUE)
+  gini_de <- function(v) concepts_national$gini[concepts_national$variable == v]
+  pauvrete_de <- function(v) {
+    100 * concepts_national$pauvrete_fgt0[concepts_national$variable == v]
+  }
+  macro <- function(nom, valeur) sprintf("\\newcommand{\\%s}{%s}", nom, valeur)
   summary_tex <- c(
-    "% Généré automatiquement par 25_ceq_report_tables.R",
-    sprintf("\\newcommand{\\GiniDisponible}{%.4f}", concepts_national$gini[concepts_national$variable == "yd_pc"]),
-    sprintf("\\newcommand{\\GiniConsommable}{%.4f}", concepts_national$gini[concepts_national$variable == "yc_pc"]),
-    sprintf("\\newcommand{\\GiniFinal}{%.4f}", concepts_national$gini[concepts_national$variable == "yf_pc"]),
-    sprintf("\\newcommand{\\PartAppauvrie}{%.2f\\%%}", 100 * fiscal_poverty$part_population_appauvrie[fiscal_poverty$scenario == "PDI"]),
-    sprintf("\\newcommand{\\PartNouveauxPauvres}{%.2f\\%%}", 100 * fiscal_poverty$part_nouveaux_pauvres[fiscal_poverty$scenario == "PDI"]))
+    "% Généré automatiquement par 25_ceq_report_tables.R — ne pas éditer à la main.",
+    "% Injecté dans DT_CEQ_CIV2021.tex par \\input{generated/ceq_summary_values}.",
+    macro("GiniPrimaire", fr(gini_de("yp_pc_pdi"), 4)),
+    macro("GiniNetMarche", fr(gini_de("yn_pc_pdi"), 4)),
+    macro("GiniBrut", fr(gini_de("yg_pc_pdi"), 4)),
+    macro("GiniDisponible", fr(gini_de("yd_pc"), 4)),
+    macro("GiniConsommable", fr(gini_de("yc_pc"), 4)),
+    macro("GiniFinal", fr(gini_de("yf_pc"), 4)),
+    macro("PauvretePrimaire", paste0(fr(pauvrete_de("yp_pc_pdi"), 2), "~\\%")),
+    macro("PauvreteNetMarche", paste0(fr(pauvrete_de("yn_pc_pdi"), 2), "~\\%")),
+    macro("PauvreteBrut", paste0(fr(pauvrete_de("yg_pc_pdi"), 2), "~\\%")),
+    macro("PauvreteDisponible", paste0(fr(pauvrete_de("yd_pc"), 2), "~\\%")),
+    macro("PauvreteConsommable", paste0(fr(pauvrete_de("yc_pc"), 2), "~\\%")),
+    macro("PauvreteFinale", paste0(fr(pauvrete_de("yf_pc"), 2), "~\\%")),
+    macro("ReductionGini", fr(gini_de("yp_pc_pdi") - gini_de("yf_pc"), 5)),
+    macro("PartAppauvrie", paste0(fr(
+      100 * fiscal_poverty$part_population_appauvrie[fiscal_poverty$scenario == "PDI"], 2), "~\\%")),
+    macro("PartNouveauxPauvres", paste0(fr(
+      100 * fiscal_poverty$part_nouveaux_pauvres[fiscal_poverty$scenario == "PDI"], 2), "~\\%")))
   writeLines(summary_tex, file.path(gen_dir, "ceq_summary_values.tex"), useBytes = TRUE)
 
   if (any(abs(shapley$variation_totale - sum(shapley$contribution_gini)) > 1e-8)) {

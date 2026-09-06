@@ -76,7 +76,7 @@ run_sensitivity_taxation <- function(paths) {
     dplyr::ungroup()
 
   hh_decile <- df %>%
-    dplyr::distinct(hhid, pcexp, hhsize, hhweight) %>%
+    dplyr::distinct(hhid, pcexp, hhsize, hhweight, milieu, region) %>%
     dplyr::mutate(
       pcweight = hhweight * hhsize,
       decile = weighted_ntile(pcexp, pcweight, n = 10)
@@ -94,6 +94,23 @@ run_sensitivity_taxation <- function(paths) {
       vat_item_s3 = alpha_3 * vat_item_strict
     ) %>%
     dplyr::select(-alpha_d1, -slope)
+
+  # ── SCENARIO 4 : borne superieure ancree sur l'offre ivoirienne ────────────
+  # Contrairement a S1, S2 et S3, le coefficient alpha de ce scenario n'est pas
+  # postule : il est deduit de la part de la consommation marchande des menages
+  # fournie par des entreprises de menages non immatriculees a la TVA. Ces
+  # unites ne collectent pas la taxe, donc la part restante borne par le haut
+  # ce qui peut etre effectivement taxe. Le scenario majore la charge de TVA
+  # compatible avec l'offre observee; il ne remplace pas S3.
+  anchor <- build_informality_anchor(paths, df, hh_decile)
+
+  df <- df %>%
+    dplyr::left_join(anchor$alpha_s4 %>% dplyr::select(-ancree),
+                     by = c("coicop_num", "decile")) %>%
+    dplyr::mutate(
+      alpha_4 = pmin(pmax(dplyr::coalesce(alpha_4, 0), 0), 1),
+      vat_item_s4 = alpha_4 * vat_item_strict
+    )
 
   # ── Diagnostiques : alpha par COICOP × decile ───────────────────────────
   alpha_diag_decile <- df %>%
@@ -163,6 +180,7 @@ run_sensitivity_taxation <- function(paths) {
       vat_strict = sum(vat_item_strict, na.rm = TRUE),
       vat_s2     = sum(vat_item_s2,     na.rm = TRUE),
       vat_s3     = sum(vat_item_s3,     na.rm = TRUE),
+      vat_s4     = sum(vat_item_s4,     na.rm = TRUE),
       .groups    = "drop"
     ) %>%
     dplyr::mutate(
@@ -173,12 +191,15 @@ run_sensitivity_taxation <- function(paths) {
       vat_strict_real = vat_strict * def_spa,
       vat_s2_real = vat_s2 * def_spa,
       vat_s3_real = vat_s3 * def_spa,
+      vat_s4_real = vat_s4 * def_spa,
       vat_strict_pc = vat_strict_real / hhsize,
       vat_s2_pc = vat_s2_real / hhsize,
       vat_s3_pc = vat_s3_real / hhsize,
+      vat_s4_pc = vat_s4_real / hhsize,
       eff_vat_strict = vat_strict_real / yd_hh,
       eff_vat_s2     = vat_s2_real / yd_hh,
-      eff_vat_s3     = vat_s3_real / yd_hh
+      eff_vat_s3     = vat_s3_real / yd_hh,
+      eff_vat_s4     = vat_s4_real / yd_hh
     )
 
   save_parquet(hh_sens,
@@ -192,6 +213,7 @@ run_sensitivity_taxation <- function(paths) {
       rate_strict    = weighted.mean(eff_vat_strict, pcweight),
       rate_s2_milieu = weighted.mean(eff_vat_s2,     pcweight),
       rate_s3_iec    = weighted.mean(eff_vat_s3,     pcweight),
+      rate_s4_anchor = weighted.mean(eff_vat_s4,     pcweight),
       .groups        = "drop"
     )
 
@@ -209,7 +231,8 @@ run_sensitivity_taxation <- function(paths) {
     dplyr::mutate(
       consumable_strict = pmax(yd_pc - vat_strict_pc, 0),
       consumable_s2     = pmax(yd_pc - vat_s2_pc, 0),
-      consumable_s3     = pmax(yd_pc - vat_s3_pc, 0)
+      consumable_s3     = pmax(yd_pc - vat_s3_pc, 0),
+      consumable_s4     = pmax(yd_pc - vat_s4_pc, 0)
     )
 
   scenarios <- list(
@@ -218,7 +241,9 @@ run_sensitivity_taxation <- function(paths) {
     list(s = "s2_milieu",     desc = "CEI x milieu (Bachas 2024 + WB WPS10703)",
          vat = "vat_s2",     cons = "consumable_s2"),
     list(s = "s3_iec_decile", desc = "CEI x decile, profil IEC exogene (Bachas 2024)",
-         vat = "vat_s3",     cons = "consumable_s3")
+         vat = "vat_s3",     cons = "consumable_s3"),
+    list(s = "s4_borne_offre", desc = "Borne superieure ancree sur l'offre ivoirienne (module 10 EHCVM)",
+         vat = "vat_s4",     cons = "consumable_s4")
   )
 
   ceq_summary <- purrr::map_dfr(scenarios, function(x) {
@@ -233,7 +258,7 @@ run_sensitivity_taxation <- function(paths) {
       g_after     = G_after,
       c_vat       = C_vat,
       kakwani     = C_vat - G_market,
-      rs          = G_after - G_market
+      rs          = G_market - G_after
     )
   })
 
@@ -250,7 +275,8 @@ run_sensitivity_taxation <- function(paths) {
   bs_list <- list(
     list(name = "kak_strict", tax = "vat_strict"),
     list(name = "kak_s2",     tax = "vat_s2"),
-    list(name = "kak_s3",     tax = "vat_s3")
+    list(name = "kak_s3",     tax = "vat_s3"),
+    list(name = "kak_s4",     tax = "vat_s4")
   )
 
   bs_results <- purrr::map_dfr(bs_list, function(x) {
@@ -279,6 +305,8 @@ run_sensitivity_taxation <- function(paths) {
                   bs_results$mean[2], bs_results$lo_95[2], bs_results$hi_95[2]))
   message(sprintf("  Kakwani S3     : %.4f [%.4f, %.4f]",
                   bs_results$mean[3], bs_results$lo_95[3], bs_results$hi_95[3]))
+  message(sprintf("  Kakwani S4     : %.4f [%.4f, %.4f]",
+                  bs_results$mean[4], bs_results$lo_95[4], bs_results$hi_95[4]))
 
   export_excel(bs_results,
                file.path(paths$TABLES, "06", "06_01_bootstrap_kakwani.xlsx"))

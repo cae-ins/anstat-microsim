@@ -17,7 +17,7 @@ Les fichiers `TRE_COURANT_2023.XLS` et `TRE_CONSTANT_2023.XLS` doivent être pla
 ## Stockage MinIO prévu
 
 Aucun fichier du répertoire `01_data_sources` n'est inclus dans le commit du
-papier v17. L'équipe prévoit de distribuer les fichiers autorisés depuis MinIO
+papier de la branche `rewrite-r`. L'équipe prévoit de distribuer les fichiers autorisés depuis MinIO
 dans une étape ultérieure, en conservant exactement les chemins du manifeste.
 Tant que cette synchronisation n'est pas configurée, le reproducteur doit
 placer localement les fichiers autorisés à ces chemins. Les URL privées, clés

@@ -162,6 +162,20 @@ vat_io_legal <- compute_embedded_vat(
   statutory_rate = product_profile$statutory_rate,
   taxable_share = product_profile$taxable_share_legal
 )
+vat_io_upstream_75 <- compute_embedded_vat(
+  A_dom = A_dom,
+  A_import = A_import,
+  statutory_rate = product_profile$statutory_rate,
+  taxable_share = product_profile$taxable_share,
+  upstream_collection = 0.75
+)
+vat_io_upstream_50 <- compute_embedded_vat(
+  A_dom = A_dom,
+  A_import = A_import,
+  statutory_rate = product_profile$statutory_rate,
+  taxable_share = product_profile$taxable_share,
+  upstream_collection = 0.50
+)
 
 product_rates <- product_profile %>%
   mutate(
@@ -176,6 +190,8 @@ product_rates <- product_profile %>%
     embedded_rate = vat_io$embedded_rate,
     first_round_rate_legal = vat_io_legal$first_round,
     embedded_rate_legal = vat_io_legal$embedded_rate,
+    embedded_rate_upstream_75 = vat_io_upstream_75$embedded_rate,
+    embedded_rate_upstream_50 = vat_io_upstream_50$embedded_rate,
     delta_embedded_rate_legal = embedded_rate_legal - embedded_rate,
     total_rate = statutory_rate + embedded_rate,
     spectral_radius = vat_io$spectral_radius,
@@ -183,53 +199,114 @@ product_rates <- product_profile %>%
   ) %>%
   arrange(desc(embedded_rate))
 
-# 4. Incidence menage, avec un denominateur commun aux composantes.
+# 4. Incidence ménage. La cascade est multiplicative : la TVA finale porte sur
+# un prix qui comprend déjà le coût fiscal non déductible accumulé en amont.
 item_rates <- item_mapping %>%
   left_join(
-    product_rates %>% select(code, embedded_rate, embedded_rate_legal),
+    product_rates %>% select(
+      code, embedded_rate, embedded_rate_legal,
+      embedded_rate_upstream_75, embedded_rate_upstream_50
+    ),
     by = c("code_TRE" = "code")
   ) %>%
-  select(codpr, io_wb, code_TRE, embedded_rate, embedded_rate_legal)
+  select(
+    codpr, io_wb, code_TRE, embedded_rate, embedded_rate_legal,
+    embedded_rate_upstream_75, embedded_rate_upstream_50
+  )
 
 fiscal <- load_parquet(
   file.path(SILVER, "04", "fiscal_data_analysis_ready.parquet")
 )
 
-conso_local <- conso %>%
-  left_join(item_rates, by = "codpr") %>%
+conso_with_rates <- conso %>%
+  left_join(item_rates, by = "codpr")
+
+national_embedded_mean <- with(
+  dplyr::filter(conso_with_rates, !is.na(embedded_rate)),
+  stats::weighted.mean(embedded_rate, depan_w * hhweight, na.rm = TRUE)
+)
+coicop_embedded_mean <- conso_with_rates %>%
+  dplyr::filter(!is.na(embedded_rate)) %>%
+  dplyr::group_by(coicop) %>%
+  dplyr::summarise(
+    embedded_rate_coicop = stats::weighted.mean(
+      embedded_rate, depan_w * hhweight, na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+conso_local <- conso_with_rates %>%
+  left_join(coicop_embedded_mean, by = "coicop") %>%
   left_join(fiscal %>% select(hhid, decile), by = "hhid") %>%
   mutate(
+    mapped_tre = !is.na(code_TRE),
+    embedded_rate_unmapped_imputed = dplyr::coalesce(
+      embedded_rate, embedded_rate_coicop, national_embedded_mean
+    ),
     embedded_rate = replace_na(embedded_rate, 0),
     embedded_rate_legal = replace_na(embedded_rate_legal, 0),
+    embedded_rate_upstream_75 = replace_na(embedded_rate_upstream_75, 0),
+    embedded_rate_upstream_50 = replace_na(embedded_rate_upstream_50, 0),
     alpha_strict = 1,
     alpha_s2 = vat_alpha_milieu(coicop, milieu),
     alpha_s3 = vat_alpha_decile(coicop, decile),
-    formal_denominator = 1 + r_vat_official + embedded_rate,
-    informal_denominator = 1 + embedded_rate,
-    formal_denominator_legal = 1 + r_vat_official + embedded_rate_legal,
-    informal_denominator_legal = 1 + embedded_rate_legal,
+    alpha_s3_low = pmax(0, 0.8 * alpha_s3),
+    alpha_s3_high = pmin(1, 1.2 * alpha_s3),
     vat_direct_local_strict_item =
-      depan_w * alpha_strict * r_vat_official / formal_denominator,
+      depan_w * alpha_strict * r_vat_official / (1 + r_vat_official),
     vat_emb_local_strict_item =
-      depan_w * alpha_strict * embedded_rate / formal_denominator +
-      depan_w * (1 - alpha_strict) * embedded_rate /
-        informal_denominator,
+      depan_w * alpha_strict / (1 + r_vat_official) *
+        embedded_rate / (1 + embedded_rate) +
+      depan_w * (1 - alpha_strict) * embedded_rate / (1 + embedded_rate),
     vat_direct_local_s2_item =
-      depan_w * alpha_s2 * r_vat_official / formal_denominator,
+      depan_w * alpha_s2 * r_vat_official / (1 + r_vat_official),
     vat_emb_local_s2_item =
-      depan_w * alpha_s2 * embedded_rate / formal_denominator +
-      depan_w * (1 - alpha_s2) * embedded_rate / informal_denominator,
+      depan_w * alpha_s2 / (1 + r_vat_official) *
+        embedded_rate / (1 + embedded_rate) +
+      depan_w * (1 - alpha_s2) * embedded_rate / (1 + embedded_rate),
     vat_direct_local_s3_item =
-      depan_w * alpha_s3 * r_vat_official / formal_denominator,
+      depan_w * alpha_s3 * r_vat_official / (1 + r_vat_official),
     vat_emb_local_s3_item =
-      depan_w * alpha_s3 * embedded_rate / formal_denominator +
-      depan_w * (1 - alpha_s3) * embedded_rate / informal_denominator,
+      depan_w * alpha_s3 / (1 + r_vat_official) *
+        embedded_rate / (1 + embedded_rate) +
+      depan_w * (1 - alpha_s3) * embedded_rate / (1 + embedded_rate),
+    vat_direct_local_s3_alpha_low_item =
+      depan_w * alpha_s3_low * r_vat_official / (1 + r_vat_official),
+    vat_emb_local_s3_alpha_low_item =
+      depan_w * alpha_s3_low / (1 + r_vat_official) *
+        embedded_rate / (1 + embedded_rate) +
+      depan_w * (1 - alpha_s3_low) * embedded_rate / (1 + embedded_rate),
+    vat_direct_local_s3_alpha_high_item =
+      depan_w * alpha_s3_high * r_vat_official / (1 + r_vat_official),
+    vat_emb_local_s3_alpha_high_item =
+      depan_w * alpha_s3_high / (1 + r_vat_official) *
+        embedded_rate / (1 + embedded_rate) +
+      depan_w * (1 - alpha_s3_high) * embedded_rate / (1 + embedded_rate),
+    vat_direct_local_s3_upstream_75_item = vat_direct_local_s3_item,
+    vat_emb_local_s3_upstream_75_item =
+      depan_w * alpha_s3 / (1 + r_vat_official) *
+        embedded_rate_upstream_75 / (1 + embedded_rate_upstream_75) +
+      depan_w * (1 - alpha_s3) * embedded_rate_upstream_75 /
+        (1 + embedded_rate_upstream_75),
+    vat_direct_local_s3_upstream_50_item = vat_direct_local_s3_item,
+    vat_emb_local_s3_upstream_50_item =
+      depan_w * alpha_s3 / (1 + r_vat_official) *
+        embedded_rate_upstream_50 / (1 + embedded_rate_upstream_50) +
+      depan_w * (1 - alpha_s3) * embedded_rate_upstream_50 /
+        (1 + embedded_rate_upstream_50),
+    vat_direct_local_s3_unmapped_imputed_item = vat_direct_local_s3_item,
+    vat_emb_local_s3_unmapped_imputed_item =
+      depan_w * alpha_s3 / (1 + r_vat_official) *
+        embedded_rate_unmapped_imputed / (1 + embedded_rate_unmapped_imputed) +
+      depan_w * (1 - alpha_s3) * embedded_rate_unmapped_imputed /
+        (1 + embedded_rate_unmapped_imputed),
     vat_direct_local_s3_legal_item =
-      depan_w * alpha_s3 * r_vat_official / formal_denominator_legal,
+      depan_w * alpha_s3 * r_vat_official / (1 + r_vat_official),
     vat_emb_local_s3_legal_item =
-      depan_w * alpha_s3 * embedded_rate_legal / formal_denominator_legal +
+      depan_w * alpha_s3 / (1 + r_vat_official) *
+        embedded_rate_legal / (1 + embedded_rate_legal) +
       depan_w * (1 - alpha_s3) * embedded_rate_legal /
-        informal_denominator_legal
+        (1 + embedded_rate_legal)
   )
 
 hh_local <- conso_local %>%
@@ -243,6 +320,16 @@ hh_local <- conso_local %>%
     vat_emb_local_s2 = sum(vat_emb_local_s2_item, na.rm = TRUE),
     vat_direct_local_s3 = sum(vat_direct_local_s3_item, na.rm = TRUE),
     vat_emb_local_s3 = sum(vat_emb_local_s3_item, na.rm = TRUE),
+    vat_direct_local_s3_alpha_low = sum(vat_direct_local_s3_alpha_low_item, na.rm = TRUE),
+    vat_emb_local_s3_alpha_low = sum(vat_emb_local_s3_alpha_low_item, na.rm = TRUE),
+    vat_direct_local_s3_alpha_high = sum(vat_direct_local_s3_alpha_high_item, na.rm = TRUE),
+    vat_emb_local_s3_alpha_high = sum(vat_emb_local_s3_alpha_high_item, na.rm = TRUE),
+    vat_direct_local_s3_upstream_75 = sum(vat_direct_local_s3_upstream_75_item, na.rm = TRUE),
+    vat_emb_local_s3_upstream_75 = sum(vat_emb_local_s3_upstream_75_item, na.rm = TRUE),
+    vat_direct_local_s3_upstream_50 = sum(vat_direct_local_s3_upstream_50_item, na.rm = TRUE),
+    vat_emb_local_s3_upstream_50 = sum(vat_emb_local_s3_upstream_50_item, na.rm = TRUE),
+    vat_direct_local_s3_unmapped_imputed = sum(vat_direct_local_s3_unmapped_imputed_item, na.rm = TRUE),
+    vat_emb_local_s3_unmapped_imputed = sum(vat_emb_local_s3_unmapped_imputed_item, na.rm = TRUE),
     vat_direct_local_s3_legal = sum(
       vat_direct_local_s3_legal_item, na.rm = TRUE
     ),
@@ -258,6 +345,16 @@ hh_local <- conso_local %>%
       vat_direct_local_strict + vat_emb_local_strict,
     vat_total_local_s2 = vat_direct_local_s2 + vat_emb_local_s2,
     vat_total_local_s3 = vat_direct_local_s3 + vat_emb_local_s3,
+    vat_total_local_s3_alpha_low =
+      vat_direct_local_s3_alpha_low + vat_emb_local_s3_alpha_low,
+    vat_total_local_s3_alpha_high =
+      vat_direct_local_s3_alpha_high + vat_emb_local_s3_alpha_high,
+    vat_total_local_s3_upstream_75 =
+      vat_direct_local_s3_upstream_75 + vat_emb_local_s3_upstream_75,
+    vat_total_local_s3_upstream_50 =
+      vat_direct_local_s3_upstream_50 + vat_emb_local_s3_upstream_50,
+    vat_total_local_s3_unmapped_imputed =
+      vat_direct_local_s3_unmapped_imputed + vat_emb_local_s3_unmapped_imputed,
     vat_total_local_s3_legal =
       vat_direct_local_s3_legal + vat_emb_local_s3_legal
   )
@@ -290,7 +387,10 @@ fiscal_local <- fiscal %>%
     )
   )
 
-io_scenarios <- c("strict", "s2", "s3", "s3_legal")
+io_scenarios <- c(
+  "strict", "s2", "s3", "s3_alpha_low", "s3_alpha_high",
+  "s3_upstream_75", "s3_upstream_50", "s3_unmapped_imputed", "s3_legal"
+)
 summary_macro <- purrr::map_dfr(io_scenarios, function(scenario) {
   direct_var <- paste0("vat_direct_local_", scenario)
   embedded_var <- paste0("vat_emb_local_", scenario)
@@ -393,6 +493,15 @@ if (io_basis == "current") {
   export_excel(
     validation_macro,
     file.path(TABLES, "13", "13_06_macro_validation.xlsx")
+  )
+  export_excel(
+    summary_macro %>% dplyr::filter(
+      scenario %in% c(
+        "s3", "s3_alpha_low", "s3_alpha_high", "s3_upstream_75",
+        "s3_upstream_50", "s3_unmapped_imputed"
+      )
+    ),
+    file.path(TABLES, "13", "13_08_structure_sensitivities.xlsx")
   )
 
   legal_sensitivity <- summary_macro |>

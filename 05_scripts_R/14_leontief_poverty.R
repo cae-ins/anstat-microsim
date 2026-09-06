@@ -49,25 +49,35 @@ hh <- current %>%
 concepts <- tribble(
   ~concept_id, ~matrix, ~scenario, ~component, ~tax_var,
   "yd", "Aucune", "reference", "avant TVA", NA_character_,
-  "cur_direct_strict", "TRE courant", "strict", "directe",
+  "cur_direct_strict", "TRE courant", "S1", "directe",
   "vat_direct_local_strict_real",
   "cur_direct_s2", "TRE courant", "S2", "directe",
   "vat_direct_local_s2_real",
   "cur_direct_s3", "TRE courant", "S3", "directe",
   "vat_direct_local_s3_real",
-  "cur_total_strict", "TRE courant", "strict", "directe + incorporee",
+  "cur_total_strict", "TRE courant", "S1", "directe + incorporee",
   "vat_total_local_strict_real",
   "cur_total_s2", "TRE courant", "S2", "directe + incorporee",
   "vat_total_local_s2_real",
   "cur_total_s3", "TRE courant", "S3", "directe + incorporee",
   "vat_total_local_s3_real",
-  "const_total_strict", "TRE constant", "strict", "directe + incorporee",
+  "cur_total_s3_alpha_low", "TRE courant", "S3 x 0,8", "directe + incorporée",
+  "vat_total_local_s3_alpha_low_real",
+  "cur_total_s3_alpha_high", "TRE courant", "S3 x 1,2", "directe + incorporée",
+  "vat_total_local_s3_alpha_high_real",
+  "cur_total_s3_upstream_75", "TRE courant", "collecte amont 75 %", "directe + incorporée",
+  "vat_total_local_s3_upstream_75_real",
+  "cur_total_s3_upstream_50", "TRE courant", "collecte amont 50 %", "directe + incorporée",
+  "vat_total_local_s3_upstream_50_real",
+  "cur_total_s3_unmapped", "TRE courant", "non-raccordés imputés", "directe + incorporée",
+  "vat_total_local_s3_unmapped_imputed_real",
+  "const_total_strict", "TRE constant", "S1", "directe + incorporee",
   "vat_total_local_strict_real_constant",
   "const_total_s2", "TRE constant", "S2", "directe + incorporee",
   "vat_total_local_s2_real_constant",
   "const_total_s3", "TRE constant", "S3", "directe + incorporee",
   "vat_total_local_s3_real_constant",
-  "oecd_total_strict", "ICIO 2020", "strict", "directe + incorporee",
+  "oecd_total_strict", "ICIO 2020", "S1", "directe + incorporee",
   "vat_total_io_strict_real_oecd",
   "oecd_total_s2", "ICIO 2020", "S2", "directe + incorporee",
   "vat_total_io_s2_real_oecd",
@@ -224,11 +234,14 @@ export_excel(
 )
 
 figure_data <- fgt_results %>%
-  filter(matrix == "TRE courant", component != "avant TVA") %>%
+  filter(
+    matrix == "TRE courant", component != "avant TVA",
+    scenario %in% c("S1", "S2", "S3")
+  ) %>%
   mutate(
     composante = ifelse(component == "directe", "TVA directe",
                         "TVA directe + incorporee"),
-    scenario = factor(scenario, levels = c("S3", "S2", "strict"))
+    scenario = factor(scenario, levels = c("S3", "S2", "S1"))
   )
 
 fig <- ggplot(
@@ -252,7 +265,7 @@ fig <- ggplot(
     fill = NULL,
     caption = paste0(
       "S3 (central) : formalite par produit et decile; S2 : produit et milieu; ",
-      "strict : transmission complete."
+      "S1 : transmission complète."
     )
   ) +
   theme_minimal(base_size = 11) +

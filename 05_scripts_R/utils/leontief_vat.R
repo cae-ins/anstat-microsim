@@ -102,10 +102,15 @@ split_uses_by_origin <- function(U_basic, domestic_supply, imports) {
 }
 
 compute_embedded_vat <- function(A_dom, statutory_rate, taxable_share,
-                                 A_import = NULL, tolerance = 1e-10) {
+                                 A_import = NULL, upstream_collection = 1,
+                                 tolerance = 1e-10) {
   A_dom <- check_io_matrix(A_dom, "A_dom")
   n <- nrow(A_dom)
 
+  if (length(upstream_collection) != 1L || !is.finite(upstream_collection) ||
+      upstream_collection < 0 || upstream_collection > 1) {
+    stop("upstream_collection doit être compris entre 0 et 1.", call. = FALSE)
+  }
   if (is.null(A_import)) {
     A_import <- matrix(0, n, n)
   }
@@ -132,7 +137,7 @@ compute_embedded_vat <- function(A_dom, statutory_rate, taxable_share,
   # La TVA facturee sur les intrants est deductible si la production est
   # taxable. Seule la fraction non deductible devient un cout dans le secteur
   # exonere; ce cout se propage ensuite dans toutes les productions en aval.
-  input_vat <- drop(t(A_dom + A_import) %*% statutory_rate)
+  input_vat <- upstream_collection * drop(t(A_dom + A_import) %*% statutory_rate)
   first_round <- (1 - taxable_share) * input_vat
   embedded_rate <- drop(
     solve(diag(n) - t(A_dom), first_round)
@@ -156,6 +161,7 @@ compute_embedded_vat <- function(A_dom, statutory_rate, taxable_share,
     first_round = first_round,
     input_vat = input_vat,
     spectral_radius = spectral_radius,
+    upstream_collection = upstream_collection,
     equation_residual = residual
   )
 }
@@ -167,13 +173,12 @@ vat_content_from_expenditure <- function(expenditure, direct_rate,
   formal_exp <- expenditure * formal_share
   informal_exp <- expenditure * (1 - formal_share)
 
-  formal_denominator <- 1 + direct_rate + embedded_rate
-  informal_denominator <- 1 + embedded_rate
-
-  direct_vat <- formal_exp * direct_rate / formal_denominator
+  # Cascade multiplicative : la TVA finale s'applique au prix de vente qui
+  # contient déjà le coût de TVA non déductible accumulé en amont.
+  direct_vat <- formal_exp * direct_rate / (1 + direct_rate)
   embedded_vat <-
-    formal_exp * embedded_rate / formal_denominator +
-    informal_exp * embedded_rate / informal_denominator
+    formal_exp / (1 + direct_rate) * embedded_rate / (1 + embedded_rate) +
+    informal_exp * embedded_rate / (1 + embedded_rate)
 
   list(
     direct = direct_vat,

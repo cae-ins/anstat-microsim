@@ -57,7 +57,10 @@ run_poverty_incidence <- function(paths) {
       w_ind              = hhweight * hhsize,
       pcexp_after_strict = pcexp - vat_strict / hhsize,
       pcexp_after_s2     = pcexp - vat_s2     / hhsize,
-      pcexp_after_s3     = pcexp - vat_s3     / hhsize
+      pcexp_after_s3     = pcexp - vat_s3     / hhsize,
+      # S4 : borne superieure de taxation compatible avec l'offre ivoirienne
+      # observee au module 10 de l'EHCVM (voir utils/informality_anchor.R).
+      pcexp_after_s4     = pcexp - vat_s4     / hhsize
     )
 
   n_miss <- sum(is.na(hh$pcexp) | is.na(hh$zref))
@@ -81,13 +84,15 @@ run_poverty_incidence <- function(paths) {
     "pcexp",
     "pcexp_after_strict",
     "pcexp_after_s2",
-    "pcexp_after_s3"
+    "pcexp_after_s3",
+    "pcexp_after_s4"
   )
   welfare_labels <- c(
     "pcexp"               = "Avant TVA (pcexp officiel)",
     "pcexp_after_strict"  = "Après TVA — Strict (alpha=1)",
     "pcexp_after_s2"      = "Après TVA — S2 (CEI x milieu)",
-    "pcexp_after_s3"      = "Après TVA — S3 (CEI x décile)"
+    "pcexp_after_s3"      = "Après TVA — S3 (CEI x décile)",
+    "pcexp_after_s4"      = "Après TVA — S4 (borne ancrée sur l'offre)"
   )
 
   # ── Helper : table FGT (nationale ou par groupe) ──────────────────────────
@@ -151,9 +156,11 @@ run_poverty_incidence <- function(paths) {
       poor_strict = as.integer(pcexp_after_strict < zref),
       poor_s2     = as.integer(pcexp_after_s2     < zref),
       poor_s3     = as.integer(pcexp_after_s3     < zref),
+      poor_s4     = as.integer(pcexp_after_s4     < zref),
       new_poor_strict = as.integer(poor_pre == 0L & poor_strict == 1L),
       new_poor_s2     = as.integer(poor_pre == 0L & poor_s2     == 1L),
-      new_poor_s3     = as.integer(poor_pre == 0L & poor_s3     == 1L)
+      new_poor_s3     = as.integer(poor_pre == 0L & poor_s3     == 1L),
+      new_poor_s4     = as.integer(poor_pre == 0L & poor_s4     == 1L)
     )
 
   decile_impact <- hh %>%
@@ -163,15 +170,18 @@ run_poverty_incidence <- function(paths) {
       p0_strict         = weighted.mean(poor_strict, hhweight),
       p0_s2             = weighted.mean(poor_s2,     hhweight),
       p0_s3             = weighted.mean(poor_s3,     hhweight),
+      p0_s4             = weighted.mean(poor_s4,     hhweight),
       n_new_poor_strict = sum(new_poor_strict * hhweight),
       n_new_poor_s2     = sum(new_poor_s2     * hhweight),
       n_new_poor_s3     = sum(new_poor_s3     * hhweight),
+      n_new_poor_s4     = sum(new_poor_s4     * hhweight),
       .groups           = "drop"
     ) %>%
     dplyr::mutate(
       delta_p0_strict = p0_strict - p0_pre,
       delta_p0_s2     = p0_s2     - p0_pre,
-      delta_p0_s3     = p0_s3     - p0_pre
+      delta_p0_s3     = p0_s3     - p0_pre,
+      delta_p0_s4     = p0_s4     - p0_pre
     )
 
   total_new_poor <- colSums(
@@ -191,7 +201,8 @@ run_poverty_incidence <- function(paths) {
 
   # ── Figure : delta P0 par décile × scénario ───────────────────────────────
   fig_data <- decile_impact %>%
-    dplyr::select(decile, delta_p0_strict, delta_p0_s2, delta_p0_s3) %>%
+    dplyr::select(decile, delta_p0_strict, delta_p0_s2, delta_p0_s3,
+                  delta_p0_s4) %>%
     tidyr::pivot_longer(
       cols      = -decile,
       names_to  = "scenario",
@@ -201,10 +212,12 @@ run_poverty_incidence <- function(paths) {
       scenario = dplyr::case_when(
         scenario == "delta_p0_strict" ~ "Strict (alpha=1)",
         scenario == "delta_p0_s2"     ~ "S2 — CEI x milieu",
-        scenario == "delta_p0_s3"     ~ "S3 — CEI x décile"
+        scenario == "delta_p0_s3"     ~ "S3 — CEI x décile",
+        scenario == "delta_p0_s4"     ~ "S4 — borne ancrée sur l'offre"
       ),
       scenario = factor(scenario, levels = c(
-        "Strict (alpha=1)", "S2 — CEI x milieu", "S3 — CEI x décile"
+        "Strict (alpha=1)", "S2 — CEI x milieu", "S3 — CEI x décile",
+        "S4 — borne ancrée sur l'offre"
       ))
     )
 
@@ -218,7 +231,8 @@ run_poverty_incidence <- function(paths) {
       values = c(
         "Strict (alpha=1)"  = "firebrick",
         "S2 — CEI x milieu" = "steelblue",
-        "S3 — CEI x décile" = "darkgreen"
+        "S3 — CEI x décile" = "darkgreen",
+        "S4 — borne ancrée sur l'offre" = "#7F7F7F"
       )
     ) +
     ggplot2::labs(

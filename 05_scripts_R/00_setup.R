@@ -76,6 +76,7 @@ required_packages <- c(
   "openxlsx",    # export Excel
   "readxl",      # import Excel
   "readr",       # import CSV
+  "survey",      # plans de sondage complexes : poids, strates et grappes
   "sandwich",    # matrices de variance-covariance robustes en cluster
   "lmtest",      # coeftest avec SE robustes
   "jsonlite"     # manifeste de réplication JSON
@@ -102,10 +103,12 @@ for (pkg in required_packages) {
 }
 
 # ── Charger les fonctions utilitaires ───────────────────────────────────────────────────
+source(file.path(CODE, "utils", "survey_design.R"))
 source(file.path(CODE, "utils", "distributive.R"))
 source(file.path(CODE, "utils", "io.R"))
 source(file.path(CODE, "utils", "leontief_vat.R"))
 source(file.path(CODE, "utils", "vat_scenarios.R"))
+source(file.path(CODE, "utils", "informality_anchor.R"))
 source(file.path(CODE, "utils", "tre_mapping.R"))
 
 message("✓ Configuration terminee. Dossier de travail: ", ROOT)

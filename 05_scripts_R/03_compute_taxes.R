@@ -11,7 +11,7 @@
 #
 # HYPOTHESES :
 # - Transfert complet sur les consommateurs (incidence statique)
-# - Achats et valeurs d'usage retenus comme dans le do-file Banque mondiale
+# - Seuls les achats déclarés sont retenus; les valeurs d'usage sont exclues
 #
 # ENTREE:  SILVER/01/conso_clean.parquet  (niveau item: hhid × produit)
 # SORTIE: SILVER/03/fiscal_data.parquet  (niveau menage)
@@ -29,8 +29,10 @@ compute_taxes <- function(paths) {
   df <- df %>%
     dplyr::mutate(
       vat_content_share = r_vat_official / (1 + r_vat_official),
-      vat_item   = depan   * vat_content_share,
-      vat_item_w = depan_w * vat_content_share
+      vat_item = depan_raw * vat_content_share,
+      vat_item_w_p95 = depan_w_p95 * vat_content_share,
+      vat_item_w = depan_w * vat_content_share,
+      vat_item_w_p995 = depan_w_p995 * vat_content_share
     )
 
   # ── Agreger au niveau menage ─────────────────────────────────────────
@@ -44,10 +46,14 @@ compute_taxes <- function(paths) {
       hhweight = dplyr::first(hhweight),
       region   = dplyr::first(region),
       milieu   = dplyr::first(milieu),
-      conso    = sum(depan,      na.rm = TRUE),
-      conso_w  = sum(depan_w,    na.rm = TRUE),
-      vat      = sum(vat_item,   na.rm = TRUE),
-      vat_w    = sum(vat_item_w, na.rm = TRUE),
+      conso = sum(depan_raw, na.rm = TRUE),
+      conso_w_p95 = sum(depan_w_p95, na.rm = TRUE),
+      conso_w = sum(depan_w, na.rm = TRUE),
+      conso_w_p995 = sum(depan_w_p995, na.rm = TRUE),
+      vat = sum(vat_item, na.rm = TRUE),
+      vat_w_p95 = sum(vat_item_w_p95, na.rm = TRUE),
+      vat_w = sum(vat_item_w, na.rm = TRUE),
+      vat_w_p995 = sum(vat_item_w_p995, na.rm = TRUE),
       n_items  = dplyr::n(),
       .groups  = "drop"
     )
@@ -80,11 +86,40 @@ compute_taxes <- function(paths) {
       yd_pc = pcexp,
       yd_hh = pcexp * hhsize,
       vat_real = vat * def_spa,
+      vat_w_p95_real = vat_w_p95 * def_spa,
       vat_w_real = vat_w * def_spa,
+      vat_w_p995_real = vat_w_p995 * def_spa,
       yc_pc_vat = yd_pc - vat_w_real / hhsize,
       disposable_income = yd_hh,
       consumable_income = yd_hh - vat_w_real
     )
+
+  winsor_scenarios <- tibble::tribble(
+    ~scenario, ~tax_var,
+    "Sans winsorisation", "vat_real",
+    "P95", "vat_w_p95_real",
+    "P99 (central)", "vat_w_real",
+    "P99,5", "vat_w_p995_real"
+  )
+  winsor_impact <- purrr::pmap_dfr(winsor_scenarios, function(scenario, tax_var) {
+    welfare_after <- hh$yd_pc - hh[[tax_var]] / hh$hhsize
+    tibble::tibble(
+      scenario = scenario,
+      tva_milliards_fcfa = sum(hh[[tax_var]] / hh$def_spa * hh$hhweight) / 1e9,
+      taux_pauvrete = fgt_index(welfare_after, hh$zref, hh$pcweight, 0),
+      gini_apres_tva = weighted_gini(pmax(welfare_after, 0), hh$pcweight)
+    )
+  }) |>
+    dplyr::mutate(
+      ecart_tva_vs_p99_pct = 100 * (tva_milliards_fcfa /
+        tva_milliards_fcfa[scenario == "P99 (central)"] - 1),
+      ecart_pauvrete_vs_p99_points = 100 * (taux_pauvrete -
+        taux_pauvrete[scenario == "P99 (central)"])
+    )
+  export_excel(
+    winsor_impact,
+    file.path(paths$TABLES, "03", "03_02_winsorization_sensitivity.xlsx")
+  )
 
   # ── Sauvegarder ─────────────────────────────────────────────────
   message(">>> Sauvegarde des donnees fiscales au niveau menage")

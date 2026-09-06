@@ -6,7 +6,7 @@
 # ETAPES CLES :
 # 1. Charger les donnees de consommation EHCVM brutes
 # 2. Valider les identifiants
-# 3. Retenir modep 1 et 4 comme dans la base TVA Banque mondiale
+# 3. Retenir uniquement les achats déclarés (modep = 1)
 # 4. Winsoriser par produit (P99 central, P95/P99.5 en sensibilite)
 # 5. Exporter les tableaux et figures diagnostiques
 # 6. Sauvegarder le jeu de donnees nettoy en parquet
@@ -67,10 +67,12 @@ prepare_data <- function(paths) {
                file.path(paths$TABLES, "01", "summary_depan_raw.xlsx"))
 
   # ── Restreindre aux transactions marchandes ────────────────────────────────
-  # modep: 1=Achat 2=Autoconsommation 3=Don 4=Valeur d'usage 5=Loyer impute
-  # La TVA s'applique uniquement aux transactions marchandes (methode CEQ)
-  message('>>> Assiette TVA Banque mondiale (modep 1 ou 4)')
-  df <- df %>% dplyr::filter(modep %in% c(1, 4))
+  # modep: 1=Achat 2=Autoconsommation 3=Don 4=Valeur d'usage 5=Loyer imputé.
+  # L'assiette retient les achats déclarés. Les valeurs d'usage des biens
+  # durables, l'autoconsommation, les dons et les loyers imputés ne sont pas
+  # des transactions monétaires observées et sont exclus.
+  message('>>> Assiette TVA : achats déclarés uniquement (modep = 1)')
+  df <- df %>% dplyr::filter(as.integer(modep) == 1L)
   message(sprintf("  Lignes apres filtre: %s", format(nrow(df), big.mark = ",")))
 
   # ── Winsoriser au 99e percentile ─────────────────────────────────────────
@@ -91,7 +93,7 @@ prepare_data <- function(paths) {
                              color = "white", alpha = 0.8) +
     ggplot2::labs(
       title   = "Distribution de log(depan) apres nettoyage",
-      subtitle = 'Assiette TVA : modep 1 ou 4',
+      subtitle = 'Assiette TVA : achats déclarés (modep = 1)',
       x = "log(depense annuelle par item, CFA)",
       y = "Effectif"
     ) +

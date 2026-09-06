@@ -1,14 +1,41 @@
 # Mémoire partagée — CEQ Côte d'Ivoire 2021
 
-Dernière mise à jour : 19 juillet 2026.
+Dernière mise à jour : 10 août 2026.
 
 Cette note est le point de reprise du projet. Le working paper et les tables du
 pipeline restent les sources de résultat.
 
+## 0. Ce qui a changé en v22
+
+La version v22 (61 pages) ajoute trois extensions analytiques sans modifier
+aucun résultat central. Les chiffres de v21 sont reproduits à l'identique par la
+reprise intégrale du 10 août 2026 (765,6 secondes).
+
+1. **Symétrie inégalité / pauvreté.** La décomposition de Shapley, jusque-là
+   réservée au Gini, est rejouée sur FGT0 et FGT1 (étape 24, tables 23_07 à
+   23_09). L'éducation explique +7,09 points de réduction de la pauvreté, les
+   impôts indirects −4,23 points. Ce résultat est nouveau et il retourne la
+   hiérarchie des instruments par rapport à la lecture en Gini.
+2. **Reclassement et efficacité.** La décomposition d'Atkinson-Plotnick (table
+   23_10) montre que 21,8 % de l'effet vertical du système est absorbé par du
+   reclassement, et 41,6 % pour la seule éducation. Les indicateurs d'efficacité
+   d'Enami (table 23_11) rapportent chaque contribution au budget engagé.
+3. **Ancrage ivoirien du profil S3** (`utils/informality_anchor.R`, tables 06_04
+   et 06_05). Le module 10 de l'EHCVM borne par le haut la part des achats
+   taxable; S3 respecte cette borne dans les sept fonctions exploitables. Le
+   scénario S4, qui place α à la borne, remplace la borne haute théorique de S1.
+   Les valeurs unitaires du module 7B contredisent en revanche l'ampleur de la
+   pente alimentaire de S3. Ces deux résultats sont publiés en annexe~E.
+4. **Validation croisée du PMT** (table 18_07) : l'optimisme dû à l'estimation
+   dans l'échantillon ne dépasse pas 1,7 point de part de bénéficiaires pauvres.
+5. Le tableau central porte désormais des intervalles de sondage (table 22_06),
+   les macros de chiffres de tête sont réellement injectées dans le manuscrit et
+   les décomptes d'exhibits sont calculés au lieu d'être écrits en dur.
+
 ## 1. Fichiers à lire en premier
 
 - Papier source : 00_documentation/working_paper/DT_CEQ_CIV2021.tex
-- PDF courant : 00_documentation/working_paper/DT_CEQ_CIV2021_v17.pdf
+- PDF courant : 00_documentation/working_paper/DT_CEQ_CIV2021_v22.pdf
 - Feuille de route achevée : 00_documentation/CEQ_ROADMAP.md
 - Rapport méthodologique des étapes 20 à 26 :
   00_documentation/PLAN_ETAPES20_26_FINALISATION_CEQ.md
@@ -27,7 +54,7 @@ concepts CEQ sont produits jusqu'au revenu final sous deux conventions de
 pension. Les identités ferment ménage par ménage à moins de 0,000001 FCFA.
 
 La chaîne a été rejouée depuis les données préparées : les étapes 1 à 13, puis
-14 à 26, ont toutes abouti le 19 juillet 2026. Deux jointures devenues ambiguës
+14 à 26, ont de nouveau toutes abouti le 23 juillet 2026. Deux jointures devenues ambiguës
 dans une reprise entièrement fraîche ont été corrigées aux étapes 7 et 13;
 elles ne modifient aucun choix économique. Une révision éditoriale a recentré la
 conclusion sur les résultats économiques et supprimé du texte principal les
@@ -62,18 +89,44 @@ distingue nettement le PMT central de la robustesse fondée sur les déclaration
 harmonise les unités des identités CEQ et ajoute un protocole de réplication
 utilisable aussi bien manuellement que par un agent.
 
+Le papier v18 (52 pages) ouvre l'introduction sur les effets distributifs
+contrastés des impôts et des dépenses publiques, sans formuler d'appréciation
+générale sur l'action gouvernementale. Le README de rewrite-r décrit désormais
+la chaîne complète en 26 étapes, les sources d'enquête et administratives, la
+procédure PMT et son calage, l'absence temporaire des données dans Git et le
+protocole de réplication pour un économiste ou un agent.
+Le papier v19 (53 pages) intègre les 25 remarques externes du 20 juillet 2026.
+Il raccourcit l'introduction, précise que les passages sous le seuil sont à la
+baisse, nomme S1/S2/S3, documente les valeurs d'usage exclues de l'assiette,
+corrige la cascade multiplicative de TVA, la convention Reynolds--Smolensky et
+la base IGR, ajoute les robustesses S3 +/-20 %, collecte amont 75/50 %, postes
+non raccordés, électricité, santé, éducation, recyclage PMT/coûts, et archive la
+réponse point par point dans `00_documentation/working_paper/Diebolt/round4/`.
+
+Le papier v20 (53 pages) est la version de clôture de la session. Il conserve
+les résultats v19, mais polit le résumé, le premier paragraphe de l'introduction,
+la limite sur S3 et le paragraphe de conclusion sur la réforme à 9 %. Le PDF
+compile sans erreur LaTeX, citation ou référence indéfinie; le prévol donne 40
+PASS et la vérification finale 32 PASS.
+
+Le papier v21 (54 pages) formalise le plan de sondage dans les régressions du
+taux effectif de TVA. Les modèles `svyglm` utilisent `hhweight`, 66 strates et
+les grappes EHCVM. Les coefficients ponctuels restent stables; l'inférence de
+sondage ne retient plus le terme quadratique S3 (`p = 0,157`). Le texte présente
+ces résultats comme des corrélations descriptives et maintient S3 comme
+hypothèse centrale, S2 comme robustesse et S1 comme borne haute.
+
 ## 3. Méthodes stabilisées
 
 ### TVA, accises et douane
 
 Le scénario TVA central est S3, où la transmission effective varie par fonction
-de consommation et décile. S2 et la transmission intégrale sont des
-robustesses. S3 est une hypothèse exogène : sa matrice de 15 fonctions par dix
+de consommation et décile. S1, la transmission intégrale, et S2, la variante par milieu, sont des robustesses. S3 est une hypothèse exogène : sa matrice de 15 fonctions par dix
 déciles et son profil implicite sont publiés, mais aucun de ses paramètres n'est
 estimé ou calé sur une cible ivoirienne. La TVA non déductible est propagée par
 un modèle de prix de Leontief fondé sur le TRE ivoirien 2023; le TRE constant et
 ICIO 2020 sont des robustesses. Une sensibilité juridique binaire fait passer
-la TVA incorporée de 214,4 à 22,3 milliards de FCFA. Cet écart mesure la
+la TVA incorporée de 214,3 à 22,3 milliards de FCFA. Cet écart mesure la
 fragilité au proxy de droit à déduction; 22,3 milliards n'est pas une nouvelle
 valeur centrale. Les accises et droits de douane suivent la cascade droits de
 douane, accise, puis TVA, avec parts importées du TRE.
@@ -140,8 +193,7 @@ résultat central est net des paiements directs aux structures publiques.
 ### Distribution, Shapley et pauvreté
 
 Le Gini est décomposé exactement entre six groupes sur les 64 sous-ensembles et
-les 720 ordres. Cinquante réplications Rao--Wu encadrent la décomposition
-complète; les principaux indicateurs utilisent 500 réplications.
+les 720 ordres. Cinq cents réplications Rao--Wu encadrent la décomposition complète; un classeur de convergence compare 50, 100, 250 et 500 réplications.
 
 L'appauvrissement fiscal compare le revenu primaire monétaire au revenu
 consommable. L'éducation et la santé ne sont pas traitées comme de l'argent
@@ -150,25 +202,25 @@ exactement la variation de profondeur de pauvreté.
 
 ## 4. Résultats centraux
 
-- TVA directe et non déductible : 907,3 milliards de FCFA.
+- TVA finale directe : 697,2 milliards; TVA enchâssée : 214,3 milliards;
+  TVA totale ménages : 911,6 milliards de FCFA.
 - Accises : 67,9 milliards; droits de douane : 185,1 milliards.
 - Paiements publics directs : 125,798 milliards.
 - Pensions observées : 252,603 milliards.
 - Réductions de prix : 25,15 milliards.
 - Éducation brute : 1 354,87 milliards; nette : 1 301,62 milliards.
 - Santé brute : 108,53 milliards; nette : 81,85 milliards.
-- Gini primaire : 0,3414; disponible : 0,3336; consommable : 0,3248;
-  final : 0,3168.
-- Pauvreté primaire : 37,70 %; consommable : 42,01 %; finale : 33,90 %.
-- Nouveaux pauvres monétaires : 4,34 %.
-- Pertes sous le seuil : 142,73 milliards; gains : 9,30 milliards.
-- Parts Shapley de la réduction du Gini : impôts indirects 34,1 %,
-  prélèvements directs 28,6 %, éducation 27,7 %, santé 7,3 %, paiements
-  publics directs 2,9 %; les réductions de prix ont une petite contribution
-  négative.
+- Gini primaire : 0,3409; disponible : 0,3336; consommable : 0,3247;
+  final : 0,3167.
+- Pauvreté primaire : 37,72 %; consommable : 42,04 %; finale : 33,92 %.
+- Nouveaux pauvres monétaires : 4,35 %.
+- Pertes sous le seuil : 142,84 milliards; gains : 9,35 milliards.
+- Parts Shapley de la réduction du Gini : impôts indirects 35,1 %,
+  prélèvements directs 26,9 %, éducation 28,2 %, santé 7,5 %, paiements
+  publics directs 3,0 %; les réductions de prix ont une petite contribution
+  négative (-0,7 %).
 
 ## 5. Sources externes et contrôle ANStat
-
 Les fichiers officiels sont archivés sous
 01_data_sources/reference_external. Les principales références sont :
 
@@ -197,17 +249,16 @@ les résultats ménages.
 - Shapley : somme égale à la variation totale.
 - Appauvrissement : réconciliation exacte gains/pertes/profondeur.
 - Graphiques nouveaux : bleu, vert, orange, rouge et gris; aucun violet.
-- Compilation : BibTeX et trois passes PDFLaTeX, aucune citation ni référence
+- Compilation : BibTeX et passes XeLaTeX, aucune citation ni référence
   indéfinie, aucun dépassement de marge signalé.
-- Prévol de réplication : 40 contrôles réussis, aucun avertissement ni échec.
-- Vérification des sorties : 32 contrôles réussis, aucun échec; les 34 tableaux
+- Prévol de réplication : 41 contrôles réussis, aucun avertissement ni échec.
+- Vérification des sorties : 32 contrôles réussis, aucun échec; les 33 tableaux
   et figures du papier sont reliés à leur script et à leur fichier de sortie.
-- Reprise intégrale du 19 juillet 2026 : 350,4 secondes, journal
-  `replication_package/output/logs/full_run_20260719_220317.log`, sans
-  avertissement logiciel. L'audit de 15 affirmations numériques principales
-  conclut à 7 PASS, 8 EXPLAINED par le seul arrondi d'affichage, 0 FAIL et
-  0 UNMATCHED.
-- PDF figé : DT_CEQ_CIV2021_v17.pdf (52 pages, résumé de 146 mots).
+- Reprise intégrale du 23 juillet 2026 : 452,17 secondes, journal
+  `replication_package/output/logs/full_run_20260723_030556.log`. L'audit de
+  30 affirmations numériques principales conclut à 19 PASS, 11 EXPLAINED par
+  le seul arrondi d'affichage, 0 FAIL et 0 UNMATCHED.
+- PDF figé : DT_CEQ_CIV2021_v21.pdf (54 pages, résumé de 142 mots).
 
 ## 7. Limites et prolongements
 

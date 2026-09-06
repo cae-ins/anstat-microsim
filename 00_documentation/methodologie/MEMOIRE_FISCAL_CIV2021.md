@@ -18,7 +18,7 @@
 
 ## 3. Impôt Général sur le Revenu (IGR)
 ### A. Base IGR (R)
-*   **Formule** : 80% * (SBI - IS - CN)
+*   **Formule** : R = 85% * (0,8 * SBI - IS - CN). Le facteur 0,8 définit d'abord la base imposable; la réduction de 15% est ensuite appliquée au revenu net des impôts cédulaires.
 
 ### B. Quotient Familial (N)
 *   Nombre de parts plafonné à 5 :
@@ -40,7 +40,7 @@
 *   180 000 < Q <= 200 000 : (Q * 50/150) - 41 667
 *   Q > 200 000 : (Q * 60/160) - 57 813
 
-*Note : L'IGR final est (IGR_par_part * N) * 0,85 (réduction de 15%).*
+*Note : l'impôt par part est calculé sur Q = R/N, puis multiplié par N. Aucun second facteur de 0,85 n'est appliqué à l'impôt final.*
 
 ## 4. Cotisations Sociales
 ### A. CNPS (Part Salariée)
@@ -52,7 +52,8 @@
 
 ## 5. Identification dans l'EHCVM (Module s04)
 *   **Revenu Brut** : `s04q43` (Base) + `s04q45` (Primes) + `s04q47` (Avantages).
-*   **Formalité** : `s04q42 == 1` (Bulletin de paie) ET `s04q38 == 1` (Cotisation sociale).
+*   **Assujettissement central** : salaire positif et au moins un indice observé de traçabilité (bulletin, cotisation, statut ou employeur), ou emploi secondaire retenu. Une non-réponse n'est jamais assimilée à une réponse positive.
+*   **Robustesses** : critère strict = bulletin ET cotisation; critère élargi = bulletin OU cotisation.
 
 ---
-*Date de mise à jour : 23 Mai 2026*
+*Date de mise à jour : 20 juillet 2026*

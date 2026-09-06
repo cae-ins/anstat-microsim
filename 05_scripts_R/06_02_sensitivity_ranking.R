@@ -111,7 +111,7 @@ run_sensitivity_ranking <- function(paths) {
         g_after  = G_after,
         c_vat    = C_vat,
         kakwani  = C_vat - G_mkt,
-        rs       = G_after - G_mkt
+        rs       = G_mkt - G_after
       )
     })
   })

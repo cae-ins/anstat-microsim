@@ -64,7 +64,7 @@ preflight_main <- function(stop_on_fail = TRUE) {
       paste(R.version.string, "; référence", ref_version))
   required_packages <- c("haven", "arrow", "dplyr", "tidyr", "tibble", "purrr",
                          "ggplot2", "scales", "openxlsx", "readxl", "readr",
-                         "sandwich", "lmtest", "jsonlite")
+                         "survey", "sandwich", "lmtest", "jsonlite")
   for (pkg in required_packages) {
     ok <- requireNamespace(pkg, quietly = TRUE)
     version <- if (ok) as.character(utils::packageVersion(pkg)) else "absent"
