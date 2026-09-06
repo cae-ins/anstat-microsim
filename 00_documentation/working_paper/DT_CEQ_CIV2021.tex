@@ -28,6 +28,15 @@
 % entre le manuscrit et les sorties se voit immédiatement à la compilation.
 \input{generated/ceq_summary_values}
 
+% Quand un tableau ou une figure ne tient dans la fraction disponible
+% d'aucune page et se retrouve seul sur sa propre page, LaTeX centre ce
+% flottant verticalement par défaut (glue élastique de part et d'autre) :
+% ceci le colle plutôt en haut de page, comme le reste du texte.
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+
 \captionsetup{font=small, labelfont=up}
 \addto\captionsfrench{\renewcommand{\tablename}{Tableau}}
 \setlength{\parskip}{0.2em}
