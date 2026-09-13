@@ -65,6 +65,8 @@ concepts <- tribble(
   "vat_total_local_s3_real",
   "cur_total_s4", "TRE courant", "S4", "directe + incorporee",
   "vat_total_local_s4_real",
+  "cur_total_s3_legal", "TRE courant", "S3, droit à déduction juridique", "directe + incorporée",
+  "vat_total_local_s3_legal_real",
   "cur_total_s3_alpha_low", "TRE courant", "S3 x 0,8", "directe + incorporée",
   "vat_total_local_s3_alpha_low_real",
   "cur_total_s3_alpha_high", "TRE courant", "S3 x 1,2", "directe + incorporée",

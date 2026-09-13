@@ -36,3 +36,4 @@
 "Tableau Shapley pauvreté","tab:shapley-pauvrete","07_reports/tables/23/23_07_shapley_poverty_p0.xlsx;07_reports/tables/23/23_09_shapley_poverty_inference.xlsx","05_scripts_R/23_marginal_contribution.R","344","réconciliation somme égale variation totale"
 "Figure Shapley pauvreté","fig:shapley-poverty","07_reports/figures/fig23b_shapley_poverty.png","05_scripts_R/23_marginal_contribution.R","384","présence"
 "Tableau ancrage de l'informalité","tab:ancrage-offre","07_reports/tables/06/06_04_informality_anchor_supply.xlsx;07_reports/tables/06/06_05_unit_value_gradient.xlsx","05_scripts_R/utils/informality_anchor.R","517","concordance publiée et diagnostics de couverture"
+"Figure architecture du systeme fiscal","fig:architecture-fiscale","00_documentation/working_paper/DT_CEQ_CIV2021.pdf","00_documentation/working_paper/DT_CEQ_CIV2021.tex","165","schema TikZ redactionnel, lecture croisee avec le CGI et le tableau synoptique DGI 2025"

@@ -1,0 +1,128 @@
+[
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/02_data_intermediate/22/all_income_concepts.parquet",
+    "taille_octets": 5949653,
+    "modification": "2026-08-10T03:37:33+0200",
+    "md5": "ee6247fac63c0f5e5d211c846775e530",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/02_data_intermediate/23/marginal_contributions.parquet",
+    "taille_octets": 3894,
+    "modification": "2026-08-10T03:40:52+0200",
+    "md5": "dd593b4606e512900a0b028e48b436f6",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/02_data_intermediate/24/fiscal_impoverishment.parquet",
+    "taille_octets": 659221,
+    "modification": "2026-08-10T03:40:54+0200",
+    "md5": "57c443a751d19b99ae5bd62e0f2b9b24",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/02_data_intermediate/18/transfers.parquet",
+    "taille_octets": 1629570,
+    "modification": "2026-08-10T03:35:33+0200",
+    "md5": "78cf07db530ad89aa01ea343c806ea59",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/02_data_intermediate/19/subsidies.parquet",
+    "taille_octets": 727003,
+    "modification": "2026-08-10T03:36:06+0200",
+    "md5": "8fa9183042e92a0928638c3d1cb3e135",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/02_data_intermediate/17/indirect_other.parquet",
+    "taille_octets": 2848016,
+    "modification": "2026-08-10T03:34:03+0200",
+    "md5": "c2344f4a02e06d78f2bc6fa91f553126",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/02_data_intermediate/15/reform_vat_hh.parquet",
+    "taille_octets": 5140368,
+    "modification": "2026-08-10T03:32:59+0200",
+    "md5": "c56639b228c4d4bc21401a6c3308995c",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/params_indirect_other_2021.xlsx",
+    "taille_octets": 40048,
+    "modification": "2026-07-19T13:44:15+0200",
+    "md5": "31398dee35c5db4d54e6d75f89ff354c",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/params_transfers_2021.xlsx",
+    "taille_octets": 16052,
+    "modification": "2026-07-19T16:34:40+0200",
+    "md5": "d0e4606d7df69cdc8d8372d4064b3400",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/params_subsidies_2021.xlsx",
+    "taille_octets": 15383,
+    "modification": "2026-07-19T15:46:23+0200",
+    "md5": "d2827e4e071244b064b0a4dd8b1ff36e",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/params_education_2021.xlsx",
+    "taille_octets": 10759,
+    "modification": "2026-07-19T15:52:16+0200",
+    "md5": "f84fa3dbf24523a9a36de22bd623fc98",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/params_health_2021.xlsx",
+    "taille_octets": 10732,
+    "modification": "2026-07-19T15:54:52+0200",
+    "md5": "7f5c500d427d62cbaf5b712e9d0a0891",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/reference_external/ANSTAT_CNA_definitifs_2023.pdf",
+    "taille_octets": 1922958,
+    "modification": "2026-07-19T16:04:41+0200",
+    "md5": "b449a8ae6926b834264c424bb7d7ca40",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  },
+  {
+    "fichier": "C:/Users/f.migone/Desktop/projects/actif/anstat-microsim/01_data_sources/reference_external/ANSTAT_annuaire_statistiques_economiques_2023.pdf",
+    "taille_octets": 1295111,
+    "modification": "2026-07-19T16:04:42+0200",
+    "md5": "95ce071358fd0e772ae35e244f10afb3",
+    "git_revision": "ee60855",
+    "version_R": "R version 4.5.3 (2026-03-11 ucrt)",
+    "construit_le": "2026-08-10T03:44:21+0200"
+  }
+]

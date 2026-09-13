@@ -1,6 +1,25 @@
 # Mémoire partagée — CEQ Côte d'Ivoire 2021
 
-Dernière mise à jour : 10 août 2026.
+Dernière mise à jour : 13 septembre 2026.
+
+## 0 bis. Session du 13 septembre 2026 : recadrage du papier (non committé)
+
+Le round 5 (référé JAE) a été annulé ; la référence est HEAD `5713d98`. Le cadrage
+retenu est : un modèle de microsimulation fiscale réutilisable pour la Côte
+d'Ivoire, dont la pertinence justifie quatre adaptations (ancrage sur la
+consommation, part taxée par fonction et décile bornée par l'offre, TVA non
+déductible par Leontief, PSSN par score), avec pour première application
+l'incidence du système de 2021 et pour seconde les chocs de TVA (0→9 % ;
+intrants avicoles, mesure réelle de la loi de finances 2026 et de l'ordonnance
+n° 2026-03 du 7 janvier 2026 à 9 %). Réécrits : introduction, §2 (système
+fiscal et social, figure d'architecture), §3 nouvelle (microsimulation et
+informalité), §4 (données et paramètres, tableau fusionné), §5 réorganisée en
+huit sous-sections avec 5.8 « Simuler un choc » ; lexique en annexe A. Chiffres
+inchangés, sauf la ligne juridique du tableau de robustesse I/O (ΔP0 = 2,42).
+
+Prochaine session : revue minutieuse, étape par étape, de la méthodologie
+avant les résultats ; questions d'inflation pour les chocs et pour l'incidence
+sous CGI 2025 et 2026 (§6 bis) ; puis recalcul de l'avicole à 9 %.
 
 Cette note est le point de reprise du projet. Le working paper et les tables du
 pipeline restent les sources de résultat.
@@ -259,6 +278,39 @@ les résultats ménages.
   30 affirmations numériques principales conclut à 19 PASS, 11 EXPLAINED par
   le seul arrondi d'affichage, 0 FAIL et 0 UNMATCHED.
 - PDF figé : DT_CEQ_CIV2021_v21.pdf (54 pages, résumé de 142 mots).
+
+## 6 bis. Revalorisation des prix 2021 → 2025 (13 septembre 2026)
+
+Pour appliquer les CGI 2025 et 2026 aux données EHCVM 2021, les dépenses nominales
+sont revalorisées poste par poste avec un facteur annuel par fonction COICOP,
+calculé à partir des bulletins IHPC de l'ANStat (moyenne 2025 en base 2023 sur
+moyenne 2021 raccordée ; fichiers `01_data_sources/reference_external/ANSTAT_IHPC_*`,
+script `05_scripts_R/utils/ihpc_facteurs_coicop.R`). Les facteurs vont de 1,018
+(loisirs) à 1,226 (alimentation), pour 1,137 en moyenne. Un facteur global est
+exclu : les fonctions n'évoluent pas ensemble.
+
+La revalorisation se fait à quantités fixes, sans substitution face aux prix
+relatifs : ce n'est pas une limite à corriger mais une propriété du cadre, le
+modèle étant statique par construction (incidence de premier tour, comportements
+constants). Les questions de production dépassent le champ CEQ, les questions
+d'emploi relèvent de modèles de type INES, et les réactions des ménages relèvent
+d'un modèle comportemental, qui est un autre objet. À corriger avant publication
+de ce volet : (i) la moyenne annuelle ignore le calendrier de collecte de l'EHCVM
+(2021–2022) et la date d'entrée en vigueur des mesures ; (ii) pour 2026 seuls les
+mois de janvier à août sont publiés ; (iii) l'ancienne division 12 est raccordée
+aux divisions 12 et 13 de la COICOP 2018 sans distinction.
+
+## 6 ter. Améliorations potentielles, hors tâches centrales (13 septembre 2026)
+
+Notées pour mémoire, sans engagement dans le papier courant :
+
+- Scénario exogène de formalisation : faire passer la part des salariés couverts
+  par un tiers déclarant (42,7 % au centre) à une valeur cible, et mesurer recettes,
+  cotisations et incidence. Variante de règle statique sur population observée,
+  cohérente avec le cadre ; pas une prédiction de l'emploi.
+- Chaînage descendant à un modèle d'équilibre général calculable sur une matrice
+  de comptabilité sociale ivoirienne, pour les chocs assez gros pour déplacer les
+  prix relatifs de toute l'économie. Second projet, distinct du modèle statique.
 
 ## 7. Limites et prolongements
 
